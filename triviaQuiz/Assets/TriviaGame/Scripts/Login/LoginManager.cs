@@ -87,4 +87,9 @@ public class LoginManager : MonoBehaviour
                 }
             );
     }
+
+    public void OnClickSignUp()
+    {
+        SceneManager.LoadScene("SignUpScene");
+    }
 }

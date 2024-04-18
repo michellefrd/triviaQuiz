@@ -1,26 +1,42 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using TigerForge.UniDB;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class SignUpManager : MonoBehaviour
+public class RegisterManager : MonoBehaviour
 {
-    [Header("Game objects")] 
+    [Header("Game objects")]
+    [SerializeField] private TMP_InputField nameInputField;
+    [SerializeField] private TMP_InputField lastNameInputField;
     [SerializeField] private TMP_InputField emailInputField;
     [SerializeField] private TMP_InputField passwordInputField;
+    [SerializeField] private TMP_InputField confirmPasswordInputField;
     private UniDB.Trivia triviaDB;
-    
-    // Start is called before the first frame update
+
     void Start()
     {
         triviaDB = new UniDB.Trivia();
     }
-    
-    // Update is called once per frame
-    public void OnClickSignUp()
+
+    public void OnClickRegister()
     {
+        if (!IsInputValid())
+        {
+            Debug.LogWarning("Please check your input and fill all fields correctly!");
+            return;
+        }
+
+        if (passwordInputField.text != confirmPasswordInputField.text)
+        {
+            Debug.LogWarning("Passwords do not match!");
+            passwordInputField.textComponent.color = Color.red;
+            confirmPasswordInputField.textComponent.color = Color.red;
+            return;
+        }
+
         var users = triviaDB.GetTable_Users();
     
         _ = users
@@ -31,24 +47,15 @@ public class SignUpManager : MonoBehaviour
                 {
                     if (info.isOK)
                     {
-                        if (info.hasData && d != null)  // Asegúrate de que d no es null
+                        if (d != null && info.hasData)
                         {
-                            // Verificar si la contraseña es correcta
-                            if (d.password == passwordInputField.text)
-                            {
-                                Debug.Log("Login successful: " + d.name + " " + d.last_name);
-                                // Opcional: Guardar el nombre del usuario en PlayerPrefs a
-                                PlayerPrefs.SetString("Email", d.email);
-                                PlayerPrefs.Save();
-                            }
-                            else
-                            {
-                                Debug.LogWarning("Incorrect password!");
-                            }
+                            Debug.Log(emailInputField.text);
+                            Debug.LogWarning("User already exists!");
+                            emailInputField.textComponent.color = Color.red;
                         }
                         else
                         {
-                            Debug.LogWarning("No user found with that email or user data is null!");
+                            RegisterNewUser();
                         }
                     }
                     else
@@ -59,6 +66,50 @@ public class SignUpManager : MonoBehaviour
             );
     }
 
+
+    private void RegisterNewUser()
+    {
+        var users = triviaDB.GetTable_Users();
+        _ = users
+            .Insert()
+            .Data(
+                users.C.email.Value(emailInputField.text),
+                users.C.password.Value(passwordInputField.text),
+                users.C.name.Value(nameInputField.text),
+                users.C.last_name.Value(lastNameInputField.text)
+            )
+            .Run(
+                (Info info) =>
+                {
+                    if (info.isOK)
+                    {
+                        Debug.Log("Registration successful! Inserted record ID: " + info.id);
+                        // Aquí podrías redirigir a otra escena o limpiar los campos
+                    }
+                    else
+                    {
+                        Debug.LogError("Registration failed: " + info.error);
+                    }
+                }
+            );
+    }
+
+    private bool IsInputValid()
+    {
+        Regex emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+        if (string.IsNullOrWhiteSpace(nameInputField.text) || string.IsNullOrWhiteSpace(lastNameInputField.text) ||
+            string.IsNullOrWhiteSpace(emailInputField.text) || string.IsNullOrWhiteSpace(passwordInputField.text) ||
+            string.IsNullOrWhiteSpace(confirmPasswordInputField.text))
+        {
+            return false;
+        }
+        if (!emailRegex.IsMatch(emailInputField.text))
+        {
+            emailInputField.textComponent.color = Color.red;
+            return false;
+        }
+        return true;
+    }
     
     public void OnClickGoBack()
     {
