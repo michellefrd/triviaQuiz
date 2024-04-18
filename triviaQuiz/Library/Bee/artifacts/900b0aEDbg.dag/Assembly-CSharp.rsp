@@ -435,6 +435,8 @@
 "Assets/TigerForge/UniDB/Core/Http.cs"
 "Assets/TigerForge/UniDB/Demo/UniDBDemo.cs"
 "Assets/TigerForge/UniDB/UniDBConfig.cs"
+"Assets/TriviaGame/Scripts/Login/LoginManager.cs"
+"Assets/TriviaGame/Scripts/SignUp/SignUpManager.cs"
 -langversion:9.0
 
 /deterministic

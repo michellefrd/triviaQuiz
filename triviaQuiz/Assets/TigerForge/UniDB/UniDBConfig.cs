@@ -29,6 +29,48 @@ public override string GetDBType() { return Type; }
 
 
 //------------------------------------------------------------------------------------
+// TABLE: leaderboard
+//------------------------------------------------------------------------------------
+public class Leaderboard : Table {
+public class Record {
+/// <summary>
+/// [trivia » leaderboard] email (varchar | string)
+/// </summary>
+public string email;
+/// <summary>
+/// [trivia » leaderboard] score (int | Nullable Int32)
+/// </summary>
+public Nullable<Int32> score;
+}
+/// <summary>
+/// This Table Record structure.
+/// </summary>
+public Record R = new();
+
+public class Columns {
+/// <summary>
+/// [trivia » leaderboard] email (varchar | string)
+/// </summary>
+public Column email = new ("email", "leaderboard");
+/// <summary>
+/// [trivia » leaderboard] score (int | Nullable Int32)
+/// </summary>
+public Column score = new ("score", "leaderboard");
+}
+/// <summary>
+/// This Table Columns with built-in functionalities.
+/// </summary>
+public Columns C = new();
+public readonly new string name = "leaderboard";
+public readonly new Database parent;
+public override string GetName() { return name; }
+public override Database GetParent() { return parent; }
+public Leaderboard(Database p) { parent = p; }
+}
+
+
+
+//------------------------------------------------------------------------------------
 // TABLE: users
 //------------------------------------------------------------------------------------
 public class Users : Table {
@@ -95,6 +137,10 @@ public Users(Database p) { parent = p; }
 
 
 //====================================================================================
+/// <summary>
+/// [MYSQL] trivia » Leaderboard
+/// </summary>
+public Leaderboard GetTable_Leaderboard() { return new Leaderboard(this); }
 /// <summary>
 /// [MYSQL] trivia » Users
 /// </summary>
