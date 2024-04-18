@@ -5,6 +5,7 @@ using System.Net.Mail;
 using TigerForge.UniDB;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class RecoverPasswordManager : MonoBehaviour
 {
@@ -13,9 +14,13 @@ public class RecoverPasswordManager : MonoBehaviour
     [SerializeField] private TMP_InputField codeInputField;
     [SerializeField] private TMP_InputField passwordInputField;
     [SerializeField] private TMP_InputField confirmPasswordInputField;
+    [SerializeField] private GameObject sendEmailForm;
+    [SerializeField] private GameObject changePasswordForm;
     private UniDB.Trivia triviaDB;
     void Start()
     {
+        sendEmailForm.SetActive(true);
+        changePasswordForm.SetActive(false);
         triviaDB = new UniDB.Trivia();
     }
     
@@ -75,6 +80,8 @@ public class RecoverPasswordManager : MonoBehaviour
         {
             client.Send(mailMessage);
             Debug.Log("Correo enviado exitosamente.");
+            sendEmailForm.SetActive(false);
+            changePasswordForm.SetActive(true);
         }
         catch (System.Exception e)
         {
@@ -142,6 +149,7 @@ public class RecoverPasswordManager : MonoBehaviour
                     if (info.isOK)
                     {
                         Debug.Log("Password updated successfully. Affected rows: " + info.affectedRows);
+                        OnLoadLogin();
                     }
                     else
                     {
@@ -149,5 +157,10 @@ public class RecoverPasswordManager : MonoBehaviour
                     }
                 }
             );
+    }
+
+    public void OnLoadLogin()
+    {
+        SceneManager.LoadScene("LoginScene");
     }
 }
