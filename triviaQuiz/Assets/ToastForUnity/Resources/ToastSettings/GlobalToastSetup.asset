@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4b6ec1bd300d41ebb34a557cc384218b, type: 3}
+  m_Name: GlobalToastSetup
+  m_EditorClassIdentifier: 
+  scriptTemplateDirectory: {fileID: 102900000, guid: 8f4dff2ce2f2cda4aaf60dda72571eea,
+    type: 3}
+  ToastSettingList:
+  - Name: GeneralToast
+    ToastSettings:
+    - {fileID: 11400000, guid: 83cff017cb9b9ca44a29a2e6dbbd2121, type: 2}
+    - {fileID: 11400000, guid: 6b63a2c570a6edf479829aac62670fca, type: 2}
+    - {fileID: 11400000, guid: 22cb31805dab498419979997dabf510b, type: 2}
+  - Name: StylistToast
+    ToastSettings:
+    - {fileID: 11400000, guid: 0cb0cacde6c055d42973fda5466ca42a, type: 2}
+    - {fileID: 11400000, guid: c2c4b6c4300748340b660179c89f9134, type: 2}
+    - {fileID: 11400000, guid: 66b6c3dd0f7ddeb49a1474415da65752, type: 2}
+    - {fileID: 11400000, guid: 8d31310574f79fd42acc3b29970f1b6d, type: 2}
+  - Name: ProgressToast
+    ToastSettings:
+    - {fileID: 11400000, guid: 2f066a4b0e84d5c46900188979ca12bc, type: 2}
+  - Name: CustomToast
+    ToastSettings:
+    - {fileID: 11400000, guid: f6fbcfa26aefc6244b3e8b00b7ff3339, type: 2}

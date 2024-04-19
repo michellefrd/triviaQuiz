@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8b8858218f844c9a58370f04ea3fd6f, type: 3}
+  m_Name: WarningToastSetting
+  m_EditorClassIdentifier: 
+  ToastName: StylishToast-Warning
+  ToastPrefab: {fileID: 7457197864696252528, guid: 8dc974f8b993dde419d3dc695bb3d842,
+    type: 3}
+  DestroyTime: -1
+  DragAble: 1
+  DestroyWhenClicked: 0

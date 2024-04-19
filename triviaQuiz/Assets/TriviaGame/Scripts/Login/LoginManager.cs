@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using TigerForge.UniDB;
 using UnityEngine;
 using TMPro;
+using ToastForUnity.Script.Core;
+using ToastForUnity.Script.Enum;
 using UnityEngine.SceneManagement;
 
 public class LoginManager : MonoBehaviour
@@ -10,7 +12,9 @@ public class LoginManager : MonoBehaviour
     [Header("Game objects")]
     [SerializeField] private TMP_InputField emailInputField;
     [SerializeField] private TMP_InputField passwordInputField;
+    [SerializeField] private Transform toastParent;
     private UniDB.Trivia triviaDB;
+    
 
     // Color original del placeholder
     private Color originalPlaceholderColor = new Color(120f / 255f, 192f / 255f, 255f / 255f);
@@ -36,6 +40,7 @@ public class LoginManager : MonoBehaviour
         {
             if (string.IsNullOrWhiteSpace(emailInputField.text))
             {
+                Toast.PopOut("Debes llenar todos los campos", ToastStatus.Danger,toastParent );
                 emailInputField.placeholder.color = Color.red;
             }
 
@@ -92,4 +97,9 @@ public class LoginManager : MonoBehaviour
     {
         SceneManager.LoadScene("SignUpScene");
     }
+    
+    public void OnClickRecoverPassword()
+        {
+            SceneManager.LoadScene("RecoverPasswordScene");
+        }
 }

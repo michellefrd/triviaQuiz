@@ -354,6 +354,8 @@
 -r:"Library/Bee/artifacts/900b0aEDbg.dag/Assembly-CSharp.ref.dll"
 -r:"Library/Bee/artifacts/900b0aEDbg.dag/MPUIKit.Editor.ref.dll"
 -r:"Library/Bee/artifacts/900b0aEDbg.dag/MPUIKit.ref.dll"
+-r:"Library/Bee/artifacts/900b0aEDbg.dag/RunDesiredScene-Editor.ref.dll"
+-r:"Library/Bee/artifacts/900b0aEDbg.dag/RunDesiredScene.ref.dll"
 -r:"Library/Bee/artifacts/900b0aEDbg.dag/UniTask.Addressables.ref.dll"
 -r:"Library/Bee/artifacts/900b0aEDbg.dag/UniTask.DOTween.ref.dll"
 -r:"Library/Bee/artifacts/900b0aEDbg.dag/UniTask.Linq.ref.dll"
@@ -390,6 +392,7 @@
 "Assets/Puppeteer/TriviaQuizGame/Editor/Puppeteer/ShowPuppeteer.cs"
 "Assets/Puppeteer/TriviaQuizGame/Editor/TQGDynamicXMLEditor.cs"
 "Assets/Puppeteer/TriviaQuizGame/Editor/TQGMenu.cs"
+"Assets/ToastForUnity/Script/Editor/ToastMenuItem.cs"
 -langversion:9.0
 
 /deterministic
