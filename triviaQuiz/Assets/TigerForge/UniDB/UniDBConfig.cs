@@ -43,6 +43,67 @@ namespace TigerForge.UniDB
 
 
 //------------------------------------------------------------------------------------
+// TABLE: categories
+//------------------------------------------------------------------------------------
+            public class Categories : Table
+            {
+                public class Record
+                {
+                    /// <summary>
+                    /// [trivia » categories] code (int | Nullable Int32)
+                    /// </summary>
+                    public Nullable<Int32> code;
+
+                    /// <summary>
+                    /// [trivia » categories] name (varchar | string)
+                    /// </summary>
+                    public string name;
+                }
+
+                /// <summary>
+                /// This Table Record structure.
+                /// </summary>
+                public Record R = new();
+
+                public class Columns
+                {
+                    /// <summary>
+                    /// [trivia » categories] code (int | Nullable Int32)
+                    /// </summary>
+                    public Column code = new("code", "categories");
+
+                    /// <summary>
+                    /// [trivia » categories] name (varchar | string)
+                    /// </summary>
+                    public Column name = new("name", "categories");
+                }
+
+                /// <summary>
+                /// This Table Columns with built-in functionalities.
+                /// </summary>
+                public Columns C = new();
+
+                public readonly new string name = "categories";
+                public readonly new Database parent;
+
+                public override string GetName()
+                {
+                    return name;
+                }
+
+                public override Database GetParent()
+                {
+                    return parent;
+                }
+
+                public Categories(Database p)
+                {
+                    parent = p;
+                }
+            }
+
+
+//------------------------------------------------------------------------------------
 // TABLE: leaderboard
 //------------------------------------------------------------------------------------
             public class Leaderboard : Table
@@ -133,7 +194,7 @@ namespace TigerForge.UniDB
                     /// <summary>
                     /// [trivia » users] code (int | Int32)
                     /// </summary>
-                    public  Nullable<Int32> code;
+                    public Nullable<Int32> code;
                 }
 
                 /// <summary>
@@ -195,6 +256,14 @@ namespace TigerForge.UniDB
 
 
 //====================================================================================
+            /// <summary>
+            /// [MYSQL] trivia » Categories
+            /// </summary>
+            public Categories GetTable_Categories()
+            {
+                return new Categories(this);
+            }
+
             /// <summary>
             /// [MYSQL] trivia » Leaderboard
             /// </summary>
