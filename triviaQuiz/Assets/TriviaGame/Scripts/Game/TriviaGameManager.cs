@@ -30,7 +30,7 @@ public class TriviaGameManager : MonoBehaviour
     [Header("<Player Options>")]
     [Tooltip(
         "A list of the players in the game. Each player can be assigned a name, a score text, lives and lives bar. You must have at least one player in the list in order to play the game. You don't need to assign all fields. For example, a player may have a name with no lives bar and it will work fine.")]
-    public Player player;
+    public Jugador player;
 
     [Tooltip(
         "The number of lives each player has. You lose a life if time runs out, or you answer wrongly too many times")]
@@ -235,6 +235,8 @@ public class TriviaGameManager : MonoBehaviour
     /// </summary>
     void Start()
     {
+        player.email = PlayerPrefs.GetString("Email");
+        
         // Obtiene el ID de la categoría seleccionada desde PlayerPrefs
         selectedCategoryID = PlayerPrefs.GetInt("SelectedCategoryID", 0);
 
@@ -265,6 +267,7 @@ public class TriviaGameManager : MonoBehaviour
 #if UNITY_5_3 || UNITY_5_3_OR_NEWER
         highScore = PlayerPrefs.GetFloat(SceneManager.GetActiveScene().name + "HighScore", 0);
         Debug.Log("Player high score: " + highScore);
+        
 #else
             highScore = PlayerPrefs.GetFloat(Application.loadedLevelName + "HighScore", 0);
 #endif
@@ -343,6 +346,9 @@ public class TriviaGameManager : MonoBehaviour
             // Deactivate the answer object
             answerObject.gameObject.SetActive(false);
         }
+        
+        //Update score for player
+        UpdateScore();
 
         // If we have a start canvas, pause the game and display it. Otherwise, just start the game.
         if (startCanvas)
@@ -385,8 +391,8 @@ public class TriviaGameManager : MonoBehaviour
                 }
 
                 Debug.Log("Preguntas cargadas correctamente!");
-                // Aquí podrías iniciar el juego o mostrar la primera pregunta
                 StartGame();
+                
             }
             else
             {
@@ -462,8 +468,7 @@ public class TriviaGameManager : MonoBehaviour
         if (player.score < player.scoreCount)
         {
             // Count up to the courrent value
-            player.score = Mathf.Lerp(player.score,
-                player.scoreCount, Time.deltaTime * 10);
+            player.score = Mathf.Lerp(player.score, player.scoreCount, Time.deltaTime * 10);
 
             // Round up the score value
             player.score = Mathf.CeilToInt(player.score);
@@ -471,10 +476,11 @@ public class TriviaGameManager : MonoBehaviour
             // Update the score text
             UpdateScore();
         }
+        
 
         // Update the lives bar
 
-        // If the lives bar has a text in it, update it. Otherwise, resize the lives bar based on the number of lives left
+        //If the lives bar has a text in it, update it. Otherwise, resize the lives bar based on the number of lives left
         if (player.livesBar.transform.Find("Text"))
             player.livesBar.transform.Find("Text").GetComponent<Text>().text =
                 player.lives.ToString();
@@ -612,7 +618,7 @@ public class TriviaGameManager : MonoBehaviour
 
                 // Display a text indicating that we are resetting the question list 
                 questionObject.Find("Text").GetComponent<Text>().text =
-                    " All questions in the quiz have been asked, \nResetting questions list... ";
+                    " Se han realizado todas las preguntas del cuestionario. \nRestableciendo la lista de preguntas. ";
 
                 // Wait a couple of seconds to display the reset message
                 yield return new WaitForSeconds(2.0f);
@@ -1329,8 +1335,8 @@ public class TriviaGameManager : MonoBehaviour
         //if ( scoreText )    scoreText.GetComponent<Text>().text = score.ToString();
 
         //Update the score text for the current player
-        if (player.scoreText)
-            player.scoreText.GetComponent<Text>().text = player.score.ToString();
+        Debug.Log("PLAYER SCORE: " + player.score);
+        if (player.scoreText) player.scoreText.GetComponent<Text>().text = player.score.ToString();
 
         // If we reach the victory score we win the game
         if (scoreToVictory > 0 && player.score >= scoreToVictory) StartCoroutine(Victory(0));
