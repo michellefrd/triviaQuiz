@@ -40,7 +40,7 @@ public class LoginManager : MonoBehaviour
         {
             if (string.IsNullOrWhiteSpace(emailInputField.text))
             {
-                Toast.PopOut("Debes llenar todos los campos", ToastStatus.Danger,toastParent );
+                
                 emailInputField.placeholder.color = Color.red;
             }
 
@@ -49,6 +49,7 @@ public class LoginManager : MonoBehaviour
                 passwordInputField.placeholder.color = Color.red;
             }
 
+            Toast.PopOut("Debes llenar todos los campos", ToastStatus.Danger,toastParent );
             Debug.LogWarning("You must fill in all fields!");
             return;
         }
@@ -69,10 +70,11 @@ public class LoginManager : MonoBehaviour
                                 Debug.Log("Login successful: " + d.name + " " + d.last_name);
                                 PlayerPrefs.SetString("Email", d.email);
                                 PlayerPrefs.Save();
-                                SceneManager.LoadScene("CS_StartMenu");
+                                SceneManager.LoadScene("MenuScene");
                             }
                             else
                             {
+                                Toast.PopOut("Contraseña incorrecta", ToastStatus.Danger,toastParent );
                                 Debug.LogWarning("Incorrect password!");
                                 passwordInputField.textComponent.color = Color.red;
                                 passwordInputField.placeholder.color = Color.red;
@@ -80,6 +82,7 @@ public class LoginManager : MonoBehaviour
                         }
                         else
                         {
+                            Toast.PopOut("Usuario no encontrado", ToastStatus.Danger,toastParent );
                             Debug.LogWarning("No user found with that email or user data is null!");
                             emailInputField.textComponent.color = Color.red;
                             emailInputField.placeholder.color = Color.red;
@@ -88,6 +91,7 @@ public class LoginManager : MonoBehaviour
                     else
                     {
                         Debug.LogError("Database error: " + info.error);
+                        Toast.PopOut("info.error", ToastStatus.Danger,toastParent );
                     }
                 }
             );

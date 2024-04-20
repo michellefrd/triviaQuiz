@@ -1,12 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
+using TMPro;
+using UnityEngine.SceneManagement;
 using System.Text.RegularExpressions;
 using TigerForge.UniDB;
-using TMPro;
-using UnityEngine;
-using UnityEngine.SceneManagement;
+using ToastForUnity.Script.Core;
+using ToastForUnity.Script.Enum;
 
-public class RegisterManager : MonoBehaviour
+public class SignUpManager : MonoBehaviour
 {
     [Header("Game objects")]
     [SerializeField] private TMP_InputField nameInputField;
@@ -14,31 +16,51 @@ public class RegisterManager : MonoBehaviour
     [SerializeField] private TMP_InputField emailInputField;
     [SerializeField] private TMP_InputField passwordInputField;
     [SerializeField] private TMP_InputField confirmPasswordInputField;
+    [SerializeField] private Transform toastParent;
+
     private UniDB.Trivia triviaDB;
+    private Color originalInputColor = Color.black;  // El color original de los campos de entrada
+    private Color originaPlaceholderColor = new Color(120f / 255f, 192f / 255f, 255f / 255f);
+    private Color errorColor = Color.red;  // Color para errores de entrada
 
     void Start()
     {
         triviaDB = new UniDB.Trivia();
+        SubscribeInputFields();  // Suscribir los campos de entrada para resetear el color cuando cambian
+    }
+
+    private void SubscribeInputFields()
+    {
+        nameInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(nameInputField); });
+        lastNameInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(lastNameInputField); });
+        emailInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(emailInputField); });
+        passwordInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(passwordInputField); });
+        confirmPasswordInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(confirmPasswordInputField); });
+    }
+
+    private void ResetInputFieldColor(TMP_InputField inputField)
+    {
+        inputField.textComponent.color = originalInputColor;  // Restablecer el color del texto
+        inputField.placeholder.color = originaPlaceholderColor;  // Restablecer el color del placeholder
     }
 
     public void OnClickRegister()
     {
         if (!IsInputValid())
         {
-            Debug.LogWarning("Please check your input and fill all fields correctly!");
             return;
         }
 
         if (passwordInputField.text != confirmPasswordInputField.text)
         {
             Debug.LogWarning("Passwords do not match!");
-            passwordInputField.textComponent.color = Color.red;
-            confirmPasswordInputField.textComponent.color = Color.red;
+            Toast.PopOut("Contraseñas no coinciden", ToastStatus.Danger,toastParent );
+            passwordInputField.textComponent.color = errorColor;
+            confirmPasswordInputField.textComponent.color = errorColor;
             return;
         }
 
         var users = triviaDB.GetTable_Users();
-    
         _ = users
             .SelectOne()
             .Where(users.C.email.Equal(emailInputField.text))
@@ -49,9 +71,9 @@ public class RegisterManager : MonoBehaviour
                     {
                         if (d != null && info.hasData)
                         {
-                            Debug.Log(emailInputField.text);
                             Debug.LogWarning("User already exists!");
-                            emailInputField.textComponent.color = Color.red;
+                            Toast.PopOut("El usuario ya existe", ToastStatus.Warning,toastParent );
+                            emailInputField.textComponent.color = errorColor;
                         }
                         else
                         {
@@ -65,7 +87,6 @@ public class RegisterManager : MonoBehaviour
                 }
             );
     }
-
 
     private void RegisterNewUser()
     {
@@ -84,7 +105,7 @@ public class RegisterManager : MonoBehaviour
                     if (info.isOK)
                     {
                         Debug.Log("Registration successful! Inserted record ID: " + info.id);
-                        // Aquí podrías redirigir a otra escena o limpiar los campos
+                        SceneManager.LoadScene("LoginScene");
                     }
                     else
                     {
@@ -96,21 +117,57 @@ public class RegisterManager : MonoBehaviour
 
     private bool IsInputValid()
     {
-        Regex emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-        if (string.IsNullOrWhiteSpace(nameInputField.text) || string.IsNullOrWhiteSpace(lastNameInputField.text) ||
-            string.IsNullOrWhiteSpace(emailInputField.text) || string.IsNullOrWhiteSpace(passwordInputField.text) ||
-            string.IsNullOrWhiteSpace(confirmPasswordInputField.text))
+        bool isValid = true;
+        
+        if (string.IsNullOrWhiteSpace(nameInputField.text))
         {
-            return false;
+            Debug.LogWarning("Name is required.");
+            Toast.PopOut("Debes rellenar todos los campos", ToastStatus.Danger,toastParent );
+            nameInputField.placeholder.color = errorColor;
+            isValid = false;
         }
-        if (!emailRegex.IsMatch(emailInputField.text))
+        if (string.IsNullOrWhiteSpace(lastNameInputField.text))
         {
-            emailInputField.textComponent.color = Color.red;
-            return false;
+            Debug.LogWarning("Last name is required.");
+            Toast.PopOut("Debes rellenar todos los campos", ToastStatus.Danger,toastParent );
+            
+            lastNameInputField.placeholder.color = errorColor;
+            isValid = false;
         }
-        return true;
+        if (string.IsNullOrWhiteSpace(emailInputField.text))
+        {
+            Debug.LogWarning("Email is required.");
+            Toast.PopOut("Debes rellenar todos los campos", ToastStatus.Danger,toastParent );
+          
+            emailInputField.placeholder.color = errorColor;
+            isValid = false;
+        }
+        else if (!new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$").IsMatch(emailInputField.text))
+        {
+            Debug.LogWarning("Email format is incorrect.");
+            Toast.PopOut("Formato incorrecto", ToastStatus.Warning,toastParent );
+            emailInputField.textComponent.color = errorColor;
+            isValid = false;
+        }
+        if (string.IsNullOrWhiteSpace(passwordInputField.text))
+        {
+            Debug.LogWarning("Password is required.");
+            Toast.PopOut("Debes rellenar todos los campos", ToastStatus.Danger,toastParent );
+            passwordInputField.placeholder.color = errorColor;
+            
+            isValid = false;
+        }
+        if (string.IsNullOrWhiteSpace(confirmPasswordInputField.text))
+        {
+            Debug.LogWarning("Confirm password is required.");
+            Toast.PopOut("Debes rellenar todos los campos", ToastStatus.Danger,toastParent );
+            confirmPasswordInputField.placeholder.color = errorColor;
+            isValid = false;
+        }
+        
+        return isValid;
     }
-    
+
     public void OnClickGoBack()
     {
         SceneManager.LoadScene("LoginScene");
