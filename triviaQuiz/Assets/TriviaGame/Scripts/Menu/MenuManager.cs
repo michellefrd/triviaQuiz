@@ -33,7 +33,8 @@ public class MenuManager : MonoBehaviour
                             CategoryButton buttonScript = newButton.GetComponent<CategoryButton>();
                             if (buttonScript != null)
                             {
-                                buttonScript.categoryNameTxt.text = d.name; 
+                                buttonScript.categoryNameTxt.text = d.name;
+                                buttonScript.categoryID = (int)d.code;
                             }
                             else
                             {

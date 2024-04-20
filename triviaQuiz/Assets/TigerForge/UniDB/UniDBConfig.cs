@@ -165,6 +165,147 @@ namespace TigerForge.UniDB
 
 
 //------------------------------------------------------------------------------------
+// TABLE: questions
+//------------------------------------------------------------------------------------
+            public class Questions : Table
+            {
+                public class Record
+                {
+                    /// <summary>
+                    /// [trivia » questions] id (int | Nullable Int32)
+                    /// </summary>
+                    public Nullable<Int32> id;
+
+                    /// <summary>
+                    /// [trivia » questions] category (int | Nullable Int32)
+                    /// </summary>
+                    public Nullable<Int32> category;
+
+                    /// <summary>
+                    /// [trivia » questions] question (varchar | string)
+                    /// </summary>
+                    public string question;
+
+                    /// <summary>
+                    /// [trivia » questions] option0 (varchar | string)
+                    /// </summary>
+                    public string option0;
+
+                    /// <summary>
+                    /// [trivia » questions] option1 (varchar | string)
+                    /// </summary>
+                    public string option1;
+
+                    /// <summary>
+                    /// [trivia » questions] option2 (varchar | string)
+                    /// </summary>
+                    public string option2;
+
+                    /// <summary>
+                    /// [trivia » questions] option3 (varchar | string)
+                    /// </summary>
+                    public string option3;
+
+                    /// <summary>
+                    /// [trivia » questions] correctAnswer (int | Nullable Int32)
+                    /// </summary>
+                    public Nullable<Int32> correctAnswer;
+
+                    /// <summary>
+                    /// [trivia » questions] bonus (int | Nullable Int32)
+                    /// </summary>
+                    public Nullable<Int32> bonus;
+
+                    /// <summary>
+                    /// [trivia » questions] time (int | Nullable Int32)
+                    /// </summary>
+                    public Nullable<Int32> time;
+                }
+
+                /// <summary>
+                /// This Table Record structure.
+                /// </summary>
+                public Record R = new();
+
+                public class Columns
+                {
+                    /// <summary>
+                    /// [trivia » questions] id (int | Nullable Int32)
+                    /// </summary>
+                    public Column id = new("id", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] category (int | Nullable Int32)
+                    /// </summary>
+                    public Column category = new("category", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] question (varchar | string)
+                    /// </summary>
+                    public Column question = new("question", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] option0 (varchar | string)
+                    /// </summary>
+                    public Column option0 = new("option0", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] option1 (varchar | string)
+                    /// </summary>
+                    public Column option1 = new("option1", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] option2 (varchar | string)
+                    /// </summary>
+                    public Column option2 = new("option2", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] option3 (varchar | string)
+                    /// </summary>
+                    public Column option3 = new("option3", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] correctAnswer (int | Nullable Int32)
+                    /// </summary>
+                    public Column correctAnswer = new("correctAnswer", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] bonus (int | Nullable Int32)
+                    /// </summary>
+                    public Column bonus = new("bonus", "questions");
+
+                    /// <summary>
+                    /// [trivia » questions] time (int | Nullable Int32)
+                    /// </summary>
+                    public Column time = new("time", "questions");
+                }
+
+                /// <summary>
+                /// This Table Columns with built-in functionalities.
+                /// </summary>
+                public Columns C = new();
+
+                public readonly new string name = "questions";
+                public readonly new Database parent;
+
+                public override string GetName()
+                {
+                    return name;
+                }
+
+                public override Database GetParent()
+                {
+                    return parent;
+                }
+
+                public Questions(Database p)
+                {
+                    parent = p;
+                }
+            }
+
+
+//------------------------------------------------------------------------------------
 // TABLE: users
 //------------------------------------------------------------------------------------
             public class Users : Table
@@ -194,7 +335,7 @@ namespace TigerForge.UniDB
                     /// <summary>
                     /// [trivia » users] code (int | Int32)
                     /// </summary>
-                    public Nullable<Int32> code;
+                    public Int32 code;
                 }
 
                 /// <summary>
@@ -270,6 +411,14 @@ namespace TigerForge.UniDB
             public Leaderboard GetTable_Leaderboard()
             {
                 return new Leaderboard(this);
+            }
+
+            /// <summary>
+            /// [MYSQL] trivia » Questions
+            /// </summary>
+            public Questions GetTable_Questions()
+            {
+                return new Questions(this);
             }
 
             /// <summary>

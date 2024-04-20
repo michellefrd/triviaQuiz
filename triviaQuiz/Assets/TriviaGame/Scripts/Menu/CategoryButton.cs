@@ -9,7 +9,9 @@ public class CategoryButton : MonoBehaviour
 {
 		[Tooltip("Category name shown on the button")]
 		public Text categoryNameTxt;
-    
+
+		public int categoryID;
+		
 		[Tooltip("How many seconds to wait before loading a level or URL")]
 		public float loadDelay = 1;
 
@@ -63,6 +65,7 @@ public class CategoryButton : MonoBehaviour
 		/// <param name="levelName">Level name.</param>
 		public void LoadLevel()
 		{
+			PlayerPrefs.SetInt("SelectedCategoryID", categoryID);
 			Time.timeScale = 1;
 
 			// If there is a sound, play it from the source
