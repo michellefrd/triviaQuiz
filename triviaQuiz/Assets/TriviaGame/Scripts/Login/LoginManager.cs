@@ -5,6 +5,7 @@ using UnityEngine;
 using TMPro;
 using ToastForUnity.Script.Core;
 using ToastForUnity.Script.Enum;
+using TriviaQuizGame.Types;
 using UnityEngine.SceneManagement;
 
 public class LoginManager : MonoBehaviour
@@ -22,7 +23,8 @@ public class LoginManager : MonoBehaviour
     void Start()
     {
         triviaDB = new UniDB.Trivia();
-
+        //Delete all playerPreferences
+        PlayerPrefs.DeleteAll();
         // Suscribir el método para restablecer el color de los campos al evento de cambio de texto
         emailInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(emailInputField); });
         passwordInputField.onValueChanged.AddListener(delegate { ResetInputFieldColor(passwordInputField); });
