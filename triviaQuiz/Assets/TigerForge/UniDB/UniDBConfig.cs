@@ -118,7 +118,7 @@ namespace TigerForge.UniDB
                     /// <summary>
                     /// [trivia » leaderboard] score (int | Nullable Int32)
                     /// </summary>
-                    public Nullable<Int32> score;
+                    public Int32 score;
                 }
 
                 /// <summary>

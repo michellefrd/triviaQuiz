@@ -8,7 +8,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using System;
-using TriviaQuizGame.Types;
 using System.Collections.Generic;
 using TigerForge.UniDB;
 
@@ -18,14 +17,11 @@ using TigerForge.UniDB;
 public class TriviaGameManager : MonoBehaviour
 {
     private int selectedCategoryID;
-    
+
     private UniDB.Trivia triviaDB;
 
     // Holds the current event system
     internal EventSystem eventSystem;
-
-    // Holds the name of the category loaded into this quiz, if it exists
-    internal string currentCategory;
 
     [Header("<Player Options>")]
     [Tooltip(
@@ -48,15 +44,14 @@ public class TriviaGameManager : MonoBehaviour
         "A list of all possible questions in the game. Each question has a number of correct/wrong answers, a followup text, a bonus value, time, and can also have an image/video as the background of the question")]
     public Pregunta[] questions;
 
-    //public Question[] questions;
     internal Pregunta[] questionsTemp;
 
     [Tooltip(
         "The number of the first question being asked. You can change this to start from a higher question number")]
-    public int firstQuestion = 1;
+    public int firstQuestion = -1;
 
     // The index of the current question being asked. -1 is the index of the first question, 0 the index of the second, and so on
-    internal int currentQuestion = 0;
+    internal int currentQuestion = -1;
 
     // Is a question being asked right now?
     internal bool askingQuestion;
@@ -78,26 +73,10 @@ public class TriviaGameManager : MonoBehaviour
     // Holds the answers when shuffling them
     internal string[] tempAnswers;
 
-    [Tooltip(
-        "Sort the list of questions from lowest bonus to highest bonus and put them into groups. Use this if you want the questions to be displayed from the easiest to the hardest ( The difficulty of a question is decided by the bonus value you give to it )")]
-    public bool sortQuestions = true;
-
-    [Tooltip(
-        "Prevent a quiz from repeating questions. Once all questions in a quiz have been asked, they will repeat again.")]
-    public bool dontRepeatQuestions = true;
-    
-    internal int defaultQuestionsPerGroup;
     internal int questionCount = 0;
 
     // The progress object which shows all the progress tabs and how many questions are left to win
     internal RectTransform progressObject;
-
-    // The progress tab and text objects which show which question we are on. The tab also shows if we answered a question correctly or not
-    internal GameObject progressTabObject;
-    internal GameObject progressTextObject;
-
-    // The size of the progress tab. This is calculated automatically and used to align the progress bar to the center.
-    internal float progressTabSize;
 
     [Tooltip(
         "Limit the total number of questions asked, regardless of whether we answered correctly or not. Use this if you want to have a strict number of questions asked in the game (ex: 10 questions). If you keep it at 0 the number of questions will not be limited and you will go through all the question groups in the quiz before finishing it")]
@@ -139,7 +118,7 @@ public class TriviaGameManager : MonoBehaviour
         "The percentage we lose from our potential bonus if we answer a question wrongly. For example 0.5 makes us lose half the bonus if we answer wrongly once, and ¾ of the bonus if we answer twice incorrectly.")]
     public float bonusLoss = 0.5f;
 
-    // The highscore recorded for a level ( used in single player only )
+    // The highscore recorded for a level
     internal float highScore = 0;
 
     [Tooltip(
@@ -161,10 +140,6 @@ public class TriviaGameManager : MonoBehaviour
     [Tooltip("The bonus object that displays how much we can win if we answer correctly")]
     public Transform bonusObject;
 
-    [Tooltip(
-        "The menu that appears at the start of the game. This is used in the hotseat mode where we show a menu asking how many players want to participate")]
-    public Transform startCanvas;
-
     //The canvas of the timer in the game
     internal GameObject timerIcon;
     internal Image timerBar;
@@ -184,7 +159,7 @@ public class TriviaGameManager : MonoBehaviour
     internal bool isGameOver = false;
 
     [Tooltip("The level of the main menu that can be loaded after the game ends")]
-    public string mainMenuLevelName = "CS_StartMenu";
+    public string mainMenuLevelName = "MenuScene";
 
     [Header("<Animation & Sounds>")] [Tooltip("The animation that plays when showing an answer")]
     public AnimationClip animationShow;
@@ -236,13 +211,13 @@ public class TriviaGameManager : MonoBehaviour
     void Start()
     {
         player.email = PlayerPrefs.GetString("Email");
-        
+
         // Obtiene el ID de la categoría seleccionada desde PlayerPrefs
         selectedCategoryID = PlayerPrefs.GetInt("SelectedCategoryID", 0);
 
         // Haz lo que necesites con el ID de la categoría seleccionada
         Debug.Log("Categoría seleccionada: " + selectedCategoryID);
-        
+
         triviaDB = new UniDB.Trivia(); // Asumiendo que ya tienes una conexión configurada
 
         LoadQuestionsFromDatabase(selectedCategoryID);
@@ -264,13 +239,9 @@ public class TriviaGameManager : MonoBehaviour
         if (victoryCanvas) victoryCanvas.gameObject.SetActive(false);
 
         //Get the highscore for the player
-#if UNITY_5_3 || UNITY_5_3_OR_NEWER
-        highScore = PlayerPrefs.GetFloat(SceneManager.GetActiveScene().name + "HighScore", 0);
+        highScore = PlayerPrefs.GetFloat("HighScore", 0);
         Debug.Log("Player high score: " + highScore);
-        
-#else
-            highScore = PlayerPrefs.GetFloat(Application.loadedLevelName + "HighScore", 0);
-#endif
+
 
         //Assign the timer icon and text for quicker access
         if (GameObject.Find("TimerIcon"))
@@ -346,60 +317,52 @@ public class TriviaGameManager : MonoBehaviour
             // Deactivate the answer object
             answerObject.gameObject.SetActive(false);
         }
-        
+
         //Update score for player
         UpdateScore();
-
-        // If we have a start canvas, pause the game and display it. Otherwise, just start the game.
-        if (startCanvas)
-        {
-            // Show the start screen
-            startCanvas.gameObject.SetActive(true);
-        }
     }
 
     private void LoadQuestionsFromDatabase(int selectedCategoryID)
-{
-    var questionsTable = triviaDB.GetTable_Questions(); // Obtiene la tabla de preguntas
-    _ = questionsTable
-        .Select()
-        .Where(questionsTable.C.category.Equal(selectedCategoryID)) // Filtra por el ID de la categoría seleccionada
-        .Run((List<UniDB.Trivia.Questions.Record> records, Info info) =>
-        {
-            if (info.isOK && records.Count > 0)
+    {
+        var questionsTable = triviaDB.GetTable_Questions(); // Obtiene la tabla de preguntas
+        _ = questionsTable
+            .Select()
+            .Where(questionsTable.C.category.Equal(selectedCategoryID)) // Filtra por el ID de la categoría seleccionada
+            .Run((List<UniDB.Trivia.Questions.Record> records, Info info) =>
             {
-                questions = new Pregunta[records.Count]; // Inicializa el array con el número de preguntas obtenidas
-                int index = 0;
-
-                foreach (var record in records)
+                if (info.isOK && records.Count > 0)
                 {
-                    questions[index] = new Pregunta
-                    {
-                        question = record.question,
-                        answers = new[]
-                        {
-                            new Respuesta { answer = record.option0, isCorrect = record.correctAnswer == 0 },
-                            new Respuesta { answer = record.option1, isCorrect = record.correctAnswer == 1 },
-                            new Respuesta { answer = record.option2, isCorrect = record.correctAnswer == 2 },
-                            new Respuesta { answer = record.option3, isCorrect = record.correctAnswer == 3 }
-                        },
-                        multiChoice = false, // Configurar si la pregunta permite múltiples respuestas correctas
-                        bonus = (int)record.bonus, // Configurar según la lógica del juego
-                        time = 30 // Configurar según la lógica del juego
-                    };
-                    index++; // Incrementa el índice para el siguiente elemento del array
-                }
+                    questions = new Pregunta[records.Count]; // Inicializa el array con el número de preguntas obtenidas
+                    int index = 0;
 
-                Debug.Log("Preguntas cargadas correctamente!");
-                StartGame();
-                
-            }
-            else
-            {
-                Debug.LogError("Error al cargar preguntas: " + info.error);
-            }
-        });
-}
+                    foreach (var record in records)
+                    {
+                        questions[index] = new Pregunta
+                        {
+                            question = record.question,
+                            answers = new[]
+                            {
+                                new Respuesta { answer = record.option0, isCorrect = record.correctAnswer == 0 },
+                                new Respuesta { answer = record.option1, isCorrect = record.correctAnswer == 1 },
+                                new Respuesta { answer = record.option2, isCorrect = record.correctAnswer == 2 },
+                                new Respuesta { answer = record.option3, isCorrect = record.correctAnswer == 3 }
+                            },
+                            multiChoice = false, // Configurar si la pregunta permite múltiples respuestas correctas
+                            bonus = (int)record.bonus, // Configurar según la lógica del juego
+                            time = 30 // Configurar según la lógica del juego
+                        };
+                        index++; // Incrementa el índice para el siguiente elemento del array
+                    }
+
+                    Debug.Log("Preguntas cargadas correctamente!");
+                    StartGame();
+                }
+                else
+                {
+                    Debug.LogError("Error al cargar preguntas: " + info.error);
+                }
+            });
+    }
 
     /// <summary>
     /// Prepares the question list and starts the game. Also loads the XML questions from an online address if it exists.
@@ -420,20 +383,6 @@ public class TriviaGameManager : MonoBehaviour
         // Make sure the question limit isn't larger than the actual number of questions available
         questionLimit = Mathf.Clamp(questionLimit, 0, questions.Length);
 
-        // If we have a text object in the progress object, assign it and set the number of the first question
-        if (GameObject.Find("ProgressObject/Text"))
-        {
-            // Assign the text object
-            progressTextObject = GameObject.Find("ProgressObject/Text");
-
-            // Reset the question limit counter
-            questionLimitCount = 0;
-
-            // Update the question count in the text
-            if (progressTextObject)
-                progressTextObject.GetComponent<Text>().text =
-                    questionLimitCount.ToString() + "/" + questionLimit.ToString();
-        }
 
         // Go through all the questions and overwrite their time values with the quiz-wide values, if they exist
         if (quizTime > 0)
@@ -457,13 +406,6 @@ public class TriviaGameManager : MonoBehaviour
     /// </summary>
     void Update()
     {
-        // Move the progress object so that the current question is centered in the screen
-        if (progressObject && progressTabObject)
-            progressObject.anchoredPosition =
-                new Vector2(
-                    Mathf.Lerp(progressObject.anchoredPosition.x, progressTabSize * (0.5f - questionLimitCount),
-                        Time.deltaTime * 10), progressObject.anchoredPosition.y);
-
         // Make the score count up to its current value, for the current player
         if (player.score < player.scoreCount)
         {
@@ -476,7 +418,7 @@ public class TriviaGameManager : MonoBehaviour
             // Update the score text
             UpdateScore();
         }
-        
+
 
         // Update the lives bar
 
@@ -541,7 +483,6 @@ public class TriviaGameManager : MonoBehaviour
     {
         // Shuffle all the available questions
         if (randomizeQuestions == true) questions = ShuffleQuestions(questions);
-
     }
 
     /// <summary>
@@ -602,37 +543,29 @@ public class TriviaGameManager : MonoBehaviour
     {
         if (isGameOver == false)
         {
-            // This boolean is used to check if we already asked this question, and then ask another instead
-            bool questionIsUsed = false;
-
             // We are now asking a question
             askingQuestion = true;
+            
             // Go to the next question
             currentQuestion++;
-
-            // If we got to the last question in the quiz, check if there are unused questions we can put in the quiz again
-            if (dontRepeatQuestions == true && currentQuestion >= questions.Length)
+            
+            if (currentQuestion >= questions.Length)
             {
-                // Go through all the questions and reset their "used" status, so that we can use them in the quiz again
-                for (index = 0; index < questions.Length; index++) PlayerPrefs.DeleteKey(questions[index].question);
-
+                Debug.Log(currentQuestion);
+                Debug.Log(questions.Length);
                 // Display a text indicating that we are resetting the question list 
                 questionObject.Find("Text").GetComponent<Text>().text =
-                    " Se han realizado todas las preguntas del cuestionario. \nRestableciendo la lista de preguntas. ";
-
-                // Wait a couple of seconds to display the reset message
-                yield return new WaitForSeconds(2.0f);
-
-                // Reset the question index back to 0, so we begin from the first question
-                currentQuestion = 0;
+                    " Se han realizado todas las preguntas del cuestionario.";
+                // Instead of resetting the questions, end the game here
+                Debug.Log("All questions have been asked. Ending game.");
+                yield return new WaitForSeconds(2.5f);
+                StartCoroutine(Victory(0)); // Trigger the victory or game over sequence
+                yield break; // Exit the coroutine early
             }
 
-            // Check if the question has already been used, and if so, ask another question instead
-            if (currentQuestion < questions.Length && dontRepeatQuestions == true &&
-                PlayerPrefs.HasKey(questions[currentQuestion].question)) questionIsUsed = true;
 
             // Animate the question
-            if (animationQuestion && questionIsUsed == false)
+            if (animationQuestion)
             {
                 // If the animation clip doesn't exist in the animation component, add it
                 if (questionObject.GetComponent<Animation>().GetClip(animationQuestion.name) == null)
@@ -645,137 +578,125 @@ public class TriviaGameManager : MonoBehaviour
                 yield return new WaitForSeconds(questionObject.GetComponent<Animation>().clip.length * 0.5f);
             }
 
-            if (questionIsUsed == false)
+            // If we still have questions in the list, ask the next question
+            if (currentQuestion < questions.Length)
             {
-                // If we still have questions in the list, ask the next question
-                if (currentQuestion < questions.Length)
+                // Display the current question
+                questionObject.Find("Text").GetComponent<Text>().text = questions[currentQuestion].question;
+
+                // if the question is multi choice, show check button
+                if (multiChoiceButton) multiChoiceButton.SetActive(questions[currentQuestion].multiChoice);
+
+                // Set the time for this question, unless we have a global timer, in which case ignore the local time of the question
+                if (globalTime <= 0) timeLeft = questions[currentQuestion].time;
+
+                // Start the timer
+                timerRunning = true;
+
+                // Clear all the answers
+                foreach (Transform answerObject in answerObjects)
                 {
-                    // Display the current question
-                    questionObject.Find("Text").GetComponent<Text>().text = questions[currentQuestion].question;
+                    answerObject.Find("Text").GetComponent<Text>().text = "";
 
-                    // if the question is multi choice, show check button
-                    if (multiChoiceButton) multiChoiceButton.SetActive(questions[currentQuestion].multiChoice);
+                    // Hide the answer outline
+                    if (answerObject.Find("Outline"))
+                        answerObject.Find("Outline").GetComponent<Image>().enabled = false;
 
-                    // Record this question in PlayerPrefs so that we know it has been asked
-                    PlayerPrefs.SetInt(questions[currentQuestion].question, 1);
-
-                    // Set the time for this question, unless we have a global timer, in which case ignore the local time of the question
-                    if (globalTime <= 0) timeLeft = questions[currentQuestion].time;
-
-                    // Start the timer
-                    timerRunning = true;
-
-
-                    // Clear all the answers
-                    foreach (Transform answerObject in answerObjects)
+                    // If the answer has an image, clear it and hide it
+                    if (answerObject.Find("Image"))
                     {
-                        answerObject.Find("Text").GetComponent<Text>().text = "";
-
-                        // Hide the answer outline
-                        if (answerObject.Find("Outline"))
-                            answerObject.Find("Outline").GetComponent<Image>().enabled = false;
-
-                        // If the answer has an image, clear it and hide it
-                        if (answerObject.Find("Image"))
-                        {
-                            answerObject.Find("Image").GetComponent<Image>().sprite = null;
-                            answerObject.Find("Image").gameObject.SetActive(false);
-                        }
-
-                        // If the answer has a video, hide it
-                        if (answerObject.Find("Video")) answerObject.Find("Video").gameObject.SetActive(false);
+                        answerObject.Find("Image").GetComponent<Image>().sprite = null;
+                        answerObject.Find("Image").gameObject.SetActive(false);
                     }
 
-                    // Shuffle the list of answers
-                    if (randomizeAnswers == true)
-                        questions[currentQuestion].answers = ShuffleAnswers(questions[currentQuestion].answers);
-
-                    // Display the wrong and correct answers in the answer slots
-                    for (index = 0;
-                         index < questions[currentQuestion].answers.Length;
-                         index++) //  answerObjects.Length; index++)
-                    {
-                        // If the answer object is inactive, activate it
-                        if (answerObjects[index].gameObject.activeSelf == false)
-                            answerObjects[index].gameObject.SetActive(true);
-
-                        // Play the animation Show
-                        if (animationShow)
-                        {
-                            // If the animation clip doesn't exist in the animation component, add it
-                            if (answerObjects[index].GetComponent<Animation>().GetClip(animationShow.name) == null)
-                                answerObjects[index].GetComponent<Animation>()
-                                    .AddClip(animationShow, animationShow.name);
-
-                            // Play the animation
-                            answerObjects[index].GetComponent<Animation>().Play(animationShow.name);
-                        }
-
-                        // Enable the button so we can press it
-                        answerObjects[index].GetComponent<Button>().interactable = true;
-
-                        // Select each button as it becomes enabled. This action solves a bug that appeared in Unity 5.5 where buttons stay highlighted from the previous question.
-                        answerObjects[index].GetComponent<Button>().Select();
-
-                        // Display the text of the answer
-                        if (index < questions[currentQuestion].answers.Length)
-                            answerObjects[index].Find("Text").GetComponent<Text>().text =
-                                questions[currentQuestion].answers[index].answer;
-                        else answerObjects[index].gameObject.SetActive(false);
-                    }
-
-                    // If we started a new bonus group, reset the question counter
-                    if (bonus > questions[currentQuestion].bonus) questionCount = 0;
-
-                    // Set the bonus we can get for this question 
-                    bonus = questions[currentQuestion].bonus;
-
-                    if (bonusObject && bonusObject.GetComponent<Animation>())
-                    {
-                        // Animate the bonus object
-                        bonusObject.GetComponent<Animation>().Play();
-
-                        // Reset the bonus animation
-                        bonusObject.GetComponent<Animation>()[bonusObject.GetComponent<Animation>().clip.name].speed =
-                            -1;
-
-                        // Display the bonus text
-                        bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
-                    }
-
-                    // If keyboard controls are on, highlight the first answer. Otherwise, deselect all answers
-                    if (keyboardControls == true) eventSystem.SetSelectedGameObject(answerObjects[0].gameObject);
-                    else eventSystem.SetSelectedGameObject(null);
-
-                    //If there is a source and a sound, play it from the source
-                    if (soundSource && soundQuestion)
-                        soundSource.GetComponent<AudioSource>().PlayOneShot(soundQuestion);
-                }
-                else // If we have no more questions in the list, win the game
-                {
-                    //Disable the question object
-                    //questionObject.gameObject.SetActive(false);
-
-                    //If we have no more questions, we win the game!
-                    StartCoroutine(Victory(0));
+                    // If the answer has a video, hide it
+                    if (answerObject.Find("Video")) answerObject.Find("Video").gameObject.SetActive(false);
                 }
 
-                // If we have a question limit, count towards it to win
-                if (isGameOver == false && questionLimit > 0)
-                {
-                    questionLimitCount++;
+                // Shuffle the list of answers
+                if (randomizeAnswers == true)
+                    questions[currentQuestion].answers = ShuffleAnswers(questions[currentQuestion].answers);
 
-                    if (progressTextObject)
+                // Display the wrong and correct answers in the answer slots
+                for (index = 0;
+                     index < questions[currentQuestion].answers.Length;
+                     index++) //  answerObjects.Length; index++)
+                {
+                    // If the answer object is inactive, activate it
+                    if (answerObjects[index].gameObject.activeSelf == false)
+                        answerObjects[index].gameObject.SetActive(true);
+
+                    // Play the animation Show
+                    if (animationShow)
                     {
-                        // Update the question count in the text
-                        progressTextObject.GetComponent<Text>().text =
-                            questionLimitCount.ToString() + "/" + questionLimit.ToString();
+                        // If the animation clip doesn't exist in the animation component, add it
+                        if (answerObjects[index].GetComponent<Animation>().GetClip(animationShow.name) == null)
+                            answerObjects[index].GetComponent<Animation>()
+                                .AddClip(animationShow, animationShow.name);
+
+                        // Play the animation
+                        answerObjects[index].GetComponent<Animation>().Play(animationShow.name);
                     }
 
-                    // If we reach the question limit, win the game
-                    if (questionLimitCount > questionLimit) StartCoroutine(Victory(0));
+                    // Enable the button so we can press it
+                    answerObjects[index].GetComponent<Button>().interactable = true;
+
+                    // Select each button as it becomes enabled. This action solves a bug that appeared in Unity 5.5 where buttons stay highlighted from the previous question.
+                    answerObjects[index].GetComponent<Button>().Select();
+
+                    // Display the text of the answer
+                    if (index < questions[currentQuestion].answers.Length)
+                        answerObjects[index].Find("Text").GetComponent<Text>().text =
+                            questions[currentQuestion].answers[index].answer;
+                    else answerObjects[index].gameObject.SetActive(false);
                 }
+
+                // If we started a new bonus group, reset the question counter
+                if (bonus > questions[currentQuestion].bonus) questionCount = 0;
+
+                // Set the bonus we can get for this question 
+                bonus = questions[currentQuestion].bonus;
+
+                if (bonusObject && bonusObject.GetComponent<Animation>())
+                {
+                    // Animate the bonus object
+                    bonusObject.GetComponent<Animation>().Play();
+
+                    // Reset the bonus animation
+                    bonusObject.GetComponent<Animation>()[bonusObject.GetComponent<Animation>().clip.name].speed =
+                        -1;
+
+                    // Display the bonus text
+                    bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
+                }
+
+                // If keyboard controls are on, highlight the first answer. Otherwise, deselect all answers
+                if (keyboardControls == true) eventSystem.SetSelectedGameObject(answerObjects[0].gameObject);
+                else eventSystem.SetSelectedGameObject(null);
+
+                //If there is a source and a sound, play it from the source
+                if (soundSource && soundQuestion)
+                    soundSource.GetComponent<AudioSource>().PlayOneShot(soundQuestion);
             }
+            else // If we have no more questions in the list, win the game
+            {
+                //Disable the question object
+                //questionObject.gameObject.SetActive(false);
+                
+                //If we have no more questions, we win the game!
+                StartCoroutine(Victory(0));
+            }
+
+            // If we have a question limit, count towards it to win
+            if (isGameOver == false && questionLimit > 0)
+            {
+                questionLimitCount++;
+
+                Debug.Log("REACHING");
+                // If we reach the question limit, win the game
+                if (questionLimitCount > questionLimit) StartCoroutine(Victory(0));
+            }
+
             else
             {
                 // Ask the next question
@@ -841,9 +762,6 @@ public class TriviaGameManager : MonoBehaviour
                     }
                 }
 
-                // Set the color of the tab to red, if it exists
-                if (progressTabObject)
-                    progressObject.transform.GetChild(questionLimitCount).GetComponent<Image>().color = Color.red;
 
                 // Cut the bonus to half its current value
                 bonus *= bonusLoss;
@@ -903,13 +821,6 @@ public class TriviaGameManager : MonoBehaviour
                     answerObjects[answerIndex].GetComponent<Animation>().Play(animationCorrect.name);
                 }
 
-                // If we have a progress object, color the question tab based on the relevant answer object
-                if (progressObject)
-                {
-                    // Set the color of the tab to green, if it exists
-                    if (progressTabObject)
-                        progressObject.transform.GetChild(questionLimitCount).GetComponent<Image>().color = Color.green;
-                }
 
                 // Animate the bonus being added to the score
                 if (bonusObject && bonusObject.GetComponent<Animation>())
@@ -995,13 +906,6 @@ public class TriviaGameManager : MonoBehaviour
             // Increase the count of the correct answers. This is used to show how many answers we got right at the end of the game
             correctAnswers++;
 
-            // If we have a progress object, color the question tab based on the relevant answer object
-            if (progressObject)
-            {
-                // Set the color of the tab to green, if it exists
-                if (progressTabObject)
-                    progressObject.transform.GetChild(questionLimitCount).GetComponent<Image>().color = Color.green;
-            }
 
             // Animate the bonus being added to the score
             if (bonusObject && bonusObject.GetComponent<Animation>())
@@ -1046,9 +950,6 @@ public class TriviaGameManager : MonoBehaviour
                 }
             }
 
-            // Set the color of the tab to red, if it exists
-            if (progressTabObject)
-                progressObject.transform.GetChild(questionLimitCount).GetComponent<Image>().color = Color.red;
 
             // Cut the bonus to half its current value
             bonus *= bonusLoss;
@@ -1371,11 +1272,9 @@ public class TriviaGameManager : MonoBehaviour
                 highScore = player.score;
 
                 //Register the new high score
-#if UNITY_5_3 || UNITY_5_3_OR_NEWER
-                PlayerPrefs.SetFloat(SceneManager.GetActiveScene().name + "HighScore", player.score);
-#else
-                    PlayerPrefs.SetFloat(Application.loadedLevelName + "HighScore", players[currentPlayer].score);
-#endif
+                PlayerPrefs.SetFloat("HighScore", player.score);
+
+                OnUpdateLeaderboard();
             }
 
             //Write the high sscore text
@@ -1399,14 +1298,6 @@ public class TriviaGameManager : MonoBehaviour
         // Calculate the quiz duration
         playTime = DateTime.Now - startTime;
 
-        // Record the state of the category as completed
-        if (currentCategory != null)
-        {
-            PlayerPrefs.SetInt(currentCategory + "Completed", 1);
-
-            currentCategory = null;
-        }
-
         yield return new WaitForSeconds(delay);
 
         //Show the game over screen
@@ -1428,12 +1319,10 @@ public class TriviaGameManager : MonoBehaviour
                     highScore = player.score;
 
                     //Register the new high score
-#if UNITY_5_3 || UNITY_5_3_OR_NEWER
-                    PlayerPrefs.SetFloat(SceneManager.GetActiveScene().name + "HighScore",
-                        player.score);
-#else
-                        PlayerPrefs.SetFloat(Application.loadedLevelName + "HighScore", players[currentPlayer].score);
-#endif
+
+                    PlayerPrefs.SetFloat("HighScore", player.score);
+
+                    OnUpdateLeaderboard();
                 }
 
                 //Write the high sscore text
@@ -1453,16 +1342,34 @@ public class TriviaGameManager : MonoBehaviour
         }
     }
 
+
+    private void OnUpdateLeaderboard()
+    {
+        var leaderboard = triviaDB.GetTable_Leaderboard();
+
+        _ = leaderboard
+            .Update()
+            .Data(
+                leaderboard.C.score.Value(player.score)
+            )
+            .Where(leaderboard.C.email.Equal(player.email))
+            .Run(
+                (Info info) =>
+                {
+                    if (info.isOK)
+                        Debug.Log("I have updated " + info.affectedRows + " Records.");
+                    else
+                        Debug.LogWarning("No record inserted!");
+                }
+            );
+    }
+
     /// <summary>
     /// Restart the current level
     /// </summary>
     public void Restart()
     {
-#if UNITY_5_3 || UNITY_5_3_OR_NEWER
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-#else
-            Application.LoadLevel(Application.loadedLevelName);
-#endif
     }
 
     /// <summary>
@@ -1470,11 +1377,7 @@ public class TriviaGameManager : MonoBehaviour
     /// </summary>
     public void MainMenu()
     {
-#if UNITY_5_3 || UNITY_5_3_OR_NEWER
         SceneManager.LoadScene(mainMenuLevelName);
-#else
-            Application.LoadLevel(mainMenuLevelName);
-#endif
     }
 
     /// <summary>
@@ -1499,14 +1402,6 @@ public class TriviaGameManager : MonoBehaviour
         questions = setValue;
     }
 
-    /// <summary>
-    /// Sets the name of the category from an external category grid. This is used when getting the category name from a category grid
-    /// </summary>
-    /// <param name="setValue">Set value.</param>
-    public void SetCategoryName(string setValue)
-    {
-        currentCategory = setValue;
-    }
 
     /// <summary>
     /// Skips the current question and displays the next one
