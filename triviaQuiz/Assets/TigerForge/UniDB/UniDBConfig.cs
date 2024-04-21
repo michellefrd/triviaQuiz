@@ -335,7 +335,7 @@ namespace TigerForge.UniDB
                     /// <summary>
                     /// [trivia » users] code (int | Int32)
                     /// </summary>
-                    public Int32 code;
+                    public Nullable<Int32> code;
                 }
 
                 /// <summary>

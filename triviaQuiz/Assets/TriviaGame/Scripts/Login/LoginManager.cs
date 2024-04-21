@@ -1,11 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using TigerForge.UniDB;
 using UnityEngine;
 using TMPro;
 using ToastForUnity.Script.Core;
 using ToastForUnity.Script.Enum;
-using TriviaQuizGame.Types;
 using UnityEngine.SceneManagement;
 
 public class LoginManager : MonoBehaviour
@@ -67,7 +65,8 @@ public class LoginManager : MonoBehaviour
                     {
                         if (info.hasData && d != null)
                         {
-                            if (d.password == passwordInputField.text)
+                            var hashedInputPassword = HashPassword(passwordInputField.text);  // Hashear la contraseña ingresada
+                            if (d.password == hashedInputPassword)
                             {
                                 Debug.Log("Login successful: " + d.name + " " + d.last_name);
                                 PlayerPrefs.SetString("Email", d.email);
@@ -108,4 +107,14 @@ public class LoginManager : MonoBehaviour
         {
             SceneManager.LoadScene("RecoverPasswordScene");
         }
+    
+    private string HashPassword(string password)
+    {
+        using (var sha256 = System.Security.Cryptography.SHA256.Create())
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(password);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);  // Convertir el hash a string para almacenamiento
+        }
+    }
 }

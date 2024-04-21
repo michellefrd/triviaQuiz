@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -90,12 +91,14 @@ public class SignUpManager : MonoBehaviour
 
     private void RegisterNewUser()
     {
+        var hashedPassword = HashPassword(passwordInputField.text);  // Hashear la contraseña antes de guardarla
+
         var users = triviaDB.GetTable_Users();
         _ = users
             .Insert()
             .Data(
                 users.C.email.Value(emailInputField.text),
-                users.C.password.Value(passwordInputField.text),
+                users.C.password.Value(hashedPassword),  // Guardar la contraseña hasheada
                 users.C.name.Value(nameInputField.text),
                 users.C.last_name.Value(lastNameInputField.text)
             )
@@ -171,5 +174,15 @@ public class SignUpManager : MonoBehaviour
     public void OnClickGoBack()
     {
         SceneManager.LoadScene("LoginScene");
+    }
+    
+    private string HashPassword(string password)
+    {
+        using (var sha256 = System.Security.Cryptography.SHA256.Create())
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(password);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);  // Convertir el hash a string para almacenamiento
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Net;
@@ -8,6 +9,7 @@ using ToastForUnity.Script.Core;
 using ToastForUnity.Script.Enum;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Random = UnityEngine.Random;
 
 public class RecoverPasswordManager : MonoBehaviour
 {
@@ -192,11 +194,12 @@ public class RecoverPasswordManager : MonoBehaviour
 
     public void UpdateUserPassword(string email, string newPassword)
     {
+        var hashedPassword = HashPassword(newPassword);  // Hashear la nueva contraseña
         var users = triviaDB.GetTable_Users();
         _ = users
             .Update()
             .Data(
-                users.C.password.Value(newPassword)
+                users.C.password.Value(hashedPassword)  // Usar la contraseña hasheada
             )
             .Where(users.C.email.Equal(email))
             .Run(
@@ -205,7 +208,7 @@ public class RecoverPasswordManager : MonoBehaviour
                     if (info.isOK)
                     {
                         Debug.Log("Password updated successfully. Affected rows: " + info.affectedRows);
-                        Toast.PopOut("Contraseña actualizada", ToastStatus.Success,toastParent );
+                        Toast.PopOut("Contraseña actualizada", ToastStatus.Success, toastParent);
                         OnLoadLogin();
                     }
                     else
@@ -220,5 +223,15 @@ public class RecoverPasswordManager : MonoBehaviour
     public void OnLoadLogin()
     {
         SceneManager.LoadScene("LoginScene");
+    }
+    
+    private string HashPassword(string password)
+    {
+        using (var sha256 = System.Security.Cryptography.SHA256.Create())
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(password);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);
+        }
     }
 }
