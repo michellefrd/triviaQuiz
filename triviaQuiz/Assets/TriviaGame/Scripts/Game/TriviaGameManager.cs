@@ -1,8 +1,4 @@
-//Version 1.99 (26.02.2018)
-
-#if UNITY_5_3 || UNITY_5_3_OR_NEWER
 using UnityEngine.SceneManagement;
-#endif
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -12,171 +8,187 @@ using System.Collections.Generic;
 using TigerForge.UniDB;
 
 /// <summary>
-/// This script controls the game, starting it, following game progress, and finishing it with game over.
+/// Este script controla el juego, lo inicia, sigue el progreso del mismo y finaliza el juego.
 /// </summary>
 public class TriviaGameManager : MonoBehaviour
 {
+    // Categoría de las preguntas a cargar
     private int selectedCategoryID;
 
+    // Conexión a la base de datos
     private UniDB.Trivia triviaDB;
 
     // Holds the current event system
     internal EventSystem eventSystem;
 
-    [Header("<Player Options>")]
+    [Header("<Opciones del jugador>")]
     [Tooltip(
-        "A list of the players in the game. Each player can be assigned a name, a score text, lives and lives bar. You must have at least one player in the list in order to play the game. You don't need to assign all fields. For example, a player may have a name with no lives bar and it will work fine.")]
+        "Una lista de los jugadores en el juego. A cada jugador se le puede asignar un nombre, un texto de puntuación, vidas y una barra de vidas. Debes tener al menos " +
+        "un jugador en la lista para poder jugar. No es necesario asignar todos los campos. Por ejemplo, un jugador puede tener un nombre sin " +
+        "live bar y funcionará bien")]
     public Jugador player;
 
     [Tooltip(
-        "The number of lives each player has. You lose a life if time runs out, or you answer wrongly too many times")]
+        "El número de vidas que tiene cada jugador. Pierdes una vida si se acaba el tiempo o respondes mal demasiadas veces.")]
     public float lives = 3;
 
-    // The width of a single life in the lives bar. This is calculated from the total width of a life bar divided by the number of lives
+    // El ancho de una sola vida en la barra de vidas. Esto se calcula a partir del ancho total de una barra de vida dividido por el número de vidas.
     internal float livesBarWidth = 128;
 
     internal RectTransform playersObject;
 
-    [Header("<Question Options>")] [Tooltip("The object that displays the current question")]
+    [Header("<Opciones de preguntas>")] [Tooltip("El objeto que muestra la pregunta actual.")]
     public Transform questionObject;
 
     [Tooltip(
-        "A list of all possible questions in the game. Each question has a number of correct/wrong answers, a followup text, a bonus value, time, and can also have an image/video as the background of the question")]
+        "Una lista de todas las preguntas posibles del juego. Cada pregunta tiene una cantidad de respuestas correctas/incorrectas,un valor extra y tiempo")]
     public Pregunta[] questions;
 
     internal Pregunta[] questionsTemp;
 
     [Tooltip(
-        "The number of the first question being asked. You can change this to start from a higher question number")]
+        "El número de la primera pregunta que se hace. Puede cambiar esto para comenzar desde un número de pregunta más alto.")]
     public int firstQuestion = -1;
 
-    // The index of the current question being asked. -1 is the index of the first question, 0 the index of the second, and so on
+
+    // El índice de la pregunta actual que se hace. -1 es el índice de la primera pregunta, 0 el índice de la segunda, y así sucesivamente
     internal int currentQuestion = -1;
 
-    // Is a question being asked right now?
+
+    // ¿Se está haciendo alguna pregunta ahora mismo?
     internal bool askingQuestion;
 
     [Tooltip(
-        "Randomize the list of questions. Use this if you don't want the questions to appear in the same order every time you play. Combine this with 'sortQuestions' if you want the questions to be randomized within the bonus groups.")]
+        "Aleatoriza la lista de preguntas. Utilice esto si no desea que las preguntas aparezcan en el mismo orden cada " +
+        "vez que juegas.")]
     public bool randomizeQuestions = true;
 
-    //The buttons that display the possible answers
+    //Los botones que muestran las posibles respuestas
     internal Transform[] answerObjects;
 
-    [Tooltip("Randomize the display order of answers when a new question is presented")]
+    [Tooltip("Aleatorizar el orden de visualización de las respuestas cuando se presenta una nueva pregunta")]
     public bool randomizeAnswers = true;
 
-    // The currently selected answer when using the ButtonSelector
+
+    // La respuesta actualmente seleccionada cuando se usa ButtonSelector
     internal int currentAnswer = 0;
     internal GameObject multiChoiceButton;
 
-    // Holds the answers when shuffling them
+
+    // Mantiene las respuestas al barajarlas
     internal string[] tempAnswers;
 
     internal int questionCount = 0;
 
-    // The progress object which shows all the progress tabs and how many questions are left to win
+    // El objeto de progreso que muestra todas las pestañas de progreso y cuántas preguntas quedan para ganar
     internal RectTransform progressObject;
 
     [Tooltip(
-        "Limit the total number of questions asked, regardless of whether we answered correctly or not. Use this if you want to have a strict number of questions asked in the game (ex: 10 questions). If you keep it at 0 the number of questions will not be limited and you will go through all the question groups in the quiz before finishing it")]
+        "Limitar el número total de preguntas formuladas, independientemente de si respondimos correctamente o no." +
+        "Utiliza esto si quieres que se haga un número estricto de preguntas en el juego (por ejemplo, 10 preguntas)" +
+        "Si lo mantienes en 0 el número de preguntas no estará limitado y pasarás por todas las preguntas del cuestionario antes de terminarlo")]
     public int questionLimit = 0;
 
-    // The total number of questions we asked. This is used to check if we reached the question limit.
+    // El número total de preguntas que hicimos. Esto se utiliza para comprobar si alcanzamos el límite de preguntas
     internal int questionLimitCount = 0;
 
-    // The number of questions we answered correctly. This is used for displaying the result at the end of the game
+    // El número de preguntas que respondimos correctamente. Esto se utiliza para mostrar el resultado al final del juego.
     internal int correctAnswers = 0;
     internal float wrongAnswers = 0;
 
     [Tooltip(
-        "The maximum number of mistakes allowed. If you make to many mistakes you lose a life and move to the next question")]
+        "El número máximo de errores permitidos. Si cometes muchos errores, perderás una vida y pasarás a la siguiente pregunta")]
     public int maximumMistakes = 2;
 
     internal int mistakeCount = 0;
 
-    // How many seconds are left before game over
+    // ¿Cuántos segundos quedan antes de que termine el juego?
     internal float timeLeft = 10;
 
-    // Is the timer running?
+
+    // ¿Está corriendo el cronómetro?
     internal bool timerRunning = false;
 
     [Tooltip(
-        "If we set this time higher than 0, it will override the individual times for each question. The global time does not reset between questions")]
+        "Si configuramos este tiempo por encima de 0, anulará los tiempos individuales para cada pregunta. La hora global no se pone a cero entre preguntas")]
     public float globalTime = 0;
 
-    [Tooltip("How many seconds do we lose from the timer when we make a mistake")]
+    [Tooltip("¿Cuántos segundos perdemos del cronómetro cuando cometemos un error?")]
     public float timeLoss = 0;
 
-    [Tooltip("How many seconds do we add to the timer when answering correctly")]
+    [Tooltip("¿Cuantos segundos sumamos al cronómetro al responder correctamente?")]
     public float timeBonus = 0;
 
-    // The bonus we currently have
+    // El bono que tenemos actualmente
     internal float bonus;
 
     [Tooltip(
-        "The percentage we lose from our potential bonus if we answer a question wrongly. For example 0.5 makes us lose half the bonus if we answer wrongly once, and ¾ of the bonus if we answer twice incorrectly.")]
+        "El porcentaje que perdemos de nuestro bono potencial si respondemos mal a una pregunta." +
+        "Por ejemplo 0,5 nos hace perder la mitad del bono si respondemos mal una vez, y ¾ del bono si respondemos mal dos veces.")]
     public float bonusLoss = 0.5f;
 
-    // The highscore recorded for a level
+
+    // La puntuación más alta registrada
     internal float highScore = 0;
 
     [Tooltip(
-        "You can set a score limit, if you reach it you win the quiz. If you don't want a score limit just keep it at 0")]
+        "Puede establecer un límite de puntuación; si lo alcanza, ganará la prueba. Si no quieres un límite de puntuación, mantenlo en 0.")]
     public float scoreToVictory = 0;
 
-    [Tooltip("Highlight the correct answer/s when showing the result")]
+    [Tooltip("Resalta la/s respuesta/s correcta/s al mostrar el resultado")]
     public bool showCorrectAnswer = true;
 
     [Tooltip(
-        "Set the same question time for all questions in the quiz. This overwrites the individual times set on each question. Keep this at 0 if you don't want to overwrite any values")]
+        "Establezca el mismo tiempo de preguntas para todas las preguntas del cuestionario. " +
+        "Esto sobrescribe los tiempos individuales establecidos en cada pregunta" +
+        "Mantén esto en 0 si no quieres sobrescribir ningún valor")]
     public float quizTime = 0;
 
     [Tooltip(
-        "Set the same question bonus for all questions in the quiz. This overwrites the individual bonuses set on each question. Keep this at 0 if you don't want to overwrite any values")]
+        "Establezca la misma bonificación de pregunta para todas las preguntas del cuestionario" +
+        "Esto sobrescribe las bonificaciones individuales establecidas en cada pregunta. Mantenlo en 0 si no deseas sobrescribir ningún valor.")]
     public float quizBonus = 0;
 
-    [Header("<User Interface Options>")]
-    [Tooltip("The bonus object that displays how much we can win if we answer correctly")]
+    [Header("<Opciones de UI>")]
+    [Tooltip("El objeto de bonificación que muestra cuánto podemos ganar si respondemos correctamente")]
     public Transform bonusObject;
 
-    //The canvas of the timer in the game
+    //El canvas del cronómetro del juego.
     internal GameObject timerIcon;
     internal Image timerBar;
     internal Text timerText;
 
-    // This is a special animation-based timer. Instead of filling up a bar it calculates the animation of the timer
+    // Este es un temporizador especial basado en animación. En lugar de llenar una barra, calcula la animación del temporizador.
     internal Animation timerAnimated;
 
-    [Tooltip("The menu that appears if we lose all lives in a single player game")]
+    [Tooltip("El menú que aparece si perdemos todas las vidas en una partida para un solo jugador")]
     public Transform gameOverCanvas;
 
-    [Tooltip("The menu that appears after finishing all the questions in the game. Used for single player and hotseat")]
+    [Tooltip("El menú que aparece después de terminar todas las preguntas del juego. Utilizado para un jugador.")]
     public Transform victoryCanvas;
 
-
-    // Is the game over?
+    // ¿Se acabó el juego?
     internal bool isGameOver = false;
 
-    [Tooltip("The level of the main menu that can be loaded after the game ends")]
+    [Tooltip("El nivel del menú principal que se puede cargar una vez finalizado el juego.")]
     public string mainMenuLevelName = "MenuScene";
 
-    [Header("<Animation & Sounds>")] [Tooltip("The animation that plays when showing an answer")]
+    [Header("<Animaciones y Sonidos>")] [Tooltip("La animación que se reproduce al mostrar una respuesta.")]
     public AnimationClip animationShow;
 
-    [Tooltip("The animation that plays when hiding an answer")]
+    [Tooltip("La animación que se reproduce al ocultar una respuesta.")]
     public AnimationClip animationHide;
 
-    [Tooltip("The animation that plays when choosing the correct answer")]
+    [Tooltip("La animación que se reproduce al elegir la respuesta correcta.")]
     public AnimationClip animationCorrect;
 
-    [Tooltip("The animation that plays when choosing the wrong answer")]
+    [Tooltip("La animación que se reproduce al elegir la respuesta incorrecta")]
     public AnimationClip animationWrong;
 
-    [Tooltip("The animation that plays when showing a new question")]
+    [Tooltip("La animación que se reproduce al mostrar una nueva pregunta.")]
     public AnimationClip animationQuestion;
 
-    [Tooltip("Various sounds and their source")]
+    [Tooltip("Varios sonidos y su fuente.")]
     public AudioClip soundQuestion;
 
     public AudioClip soundCorrect;
@@ -187,63 +199,66 @@ public class TriviaGameManager : MonoBehaviour
     public string soundSourceTag = "Sound";
     internal GameObject soundSource;
 
-    // This counts the time of the current sound playing now, so that we don't play another sound
+    // Esto cuenta el tiempo que el sonido actual se reproduce ahora, para que no reproduzcamos otro sonido
     internal float soundPlayTime = 0;
     internal bool isPaused = false;
 
-    // A general use index
+    // Indices de uso general
     internal int index = 0;
     internal int indexB = 0;
 
     internal bool keyboardControls = false;
 
-    // This stat keeps track of the time if took from the start of the quiz to the end of the quiz (gameover or victory)
+    // Esta estadística realiza un seguimiento del tiempo si se toma desde el inicio de la prueba hasta el final de la prueba (final del juego o victoria)
     internal DateTime startTime;
     internal TimeSpan playTime;
 
     /// <summary>
-    /// Start is only called once in the lifetime of the behaviour.
-    /// The difference between Awake and Start is that Start is only called if the script instance is enabled.
-    /// This allows you to delay any initialization code, until it is really needed.
-    /// Awake is always called before any Start functions.
-    /// This allows you to order initialization of scripts
+    /// Start solo se llama una vez durante la vida del behaviour.
+    /// La diferencia entre Awake y Start es que Start solo se llama si la instancia del script está habilitada.
+    /// Esto le permite retrasar cualquier código de inicialización hasta que sea realmente necesario.
+    /// Awake siempre se llama antes de cualquier función de inicio.
+    /// Esto le permite ordenar la inicialización de scripts
     /// </summary>
     void Start()
     {
+        //Obtiene el email del jugador
         player.email = PlayerPrefs.GetString("Email");
 
         // Obtiene el ID de la categoría seleccionada desde PlayerPrefs
         selectedCategoryID = PlayerPrefs.GetInt("SelectedCategoryID", 0);
 
-        // Haz lo que necesites con el ID de la categoría seleccionada
         Debug.Log("Categoría seleccionada: " + selectedCategoryID);
 
-        triviaDB = new UniDB.Trivia(); // Asumiendo que ya tienes una conexión configurada
+        // DatabaseConnection
+        triviaDB = new UniDB.Trivia();
 
+        //Cargar las preguntas de la categoría seleccionada
         LoadQuestionsFromDatabase(selectedCategoryID);
 
-        // Disable multitouch so that we don't tap two answers at the same time ( prevents multi-answer cheating, thanks to Miguel Paolino for catching this bug )
+        // Desactiva el multitouch para que no toquemos dos respuestas al mismo tiempo (evita las trampas de respuestas múltiples)
         Input.multiTouchEnabled = false;
 
-        // Cache the current event system so we can enable and disable it between questions
+        // Almacenar en caché el sistema de eventos actual para que podamos habilitarlo y deshabilitarlo entre preguntas
         eventSystem = UnityEngine.EventSystems.EventSystem.current;
 
-        // If the quiz is running on a mobile platform ( iOS, Android, etc ), disable the Standalone Input Module, so that gamepad can't take over
+        // Si el cuestionario se ejecuta en una plataforma móvil (iOS, Android, etc.), deshabilite el módulo de entrada independiente para que el gamepad no pueda tomar el control.
         if (SystemInfo.deviceType == DeviceType.Handheld)
         {
             eventSystem.GetComponent<StandaloneInputModule>().enabled = false;
         }
 
-        //Hide the game over ,victory ,and larger image screens
+
+        // Ocultar el final del juego, la victoria y las pantallas de imágenes más grandes
         if (gameOverCanvas) gameOverCanvas.gameObject.SetActive(false);
         if (victoryCanvas) victoryCanvas.gameObject.SetActive(false);
 
-        //Get the highscore for the player
+        // Consigue la puntuación más alta para el jugador
         highScore = PlayerPrefs.GetFloat("HighScore", 0);
         Debug.Log("Player high score: " + highScore);
 
 
-        //Assign the timer icon and text for quicker access
+        //Asigne el icono del temporizador y el texto para un acceso más rápido
         if (GameObject.Find("TimerIcon"))
         {
             timerIcon = GameObject.Find("TimerIcon");
@@ -251,27 +266,26 @@ public class TriviaGameManager : MonoBehaviour
             if (GameObject.Find("TimerIcon/Text")) timerText = GameObject.Find("TimerIcon/Text").GetComponent<Text>();
         }
 
-
-        //Assign the players object for quicker access to player names, scores, and lives
+        //Asigna el objeto de los jugadores para un acceso más rápido a los nombres, puntuaciones y vidas de los jugadores
         if (GameObject.Find("PlayersObject"))
         {
             playersObject = GameObject.Find("PlayersObject").GetComponent<RectTransform>();
         }
 
-        //Assign the sound source for easier access
+        //Asignar la fuente de sonido para un acceso más fácil
         if (GameObject.FindGameObjectWithTag(soundSourceTag))
             soundSource = GameObject.FindGameObjectWithTag(soundSourceTag);
 
-        // Clear the bonus object text
+        // Borrar el texto del objeto de bonificación
         if (bonusObject) bonusObject.Find("Text").GetComponent<Text>().text = "";
 
-        // Clear the question text
+        // Borrar el texto del objeto de pregunta
         questionObject.Find("Text").GetComponent<Text>().text = "";
 
-        // Hide the CONTINUE button that moves to the next question
+        // Ocultar el botón CONTINUAR que pasa a la siguiente pregunta
         if (questionObject.Find("ButtonContinue")) questionObject.Find("ButtonContinue").gameObject.SetActive(false);
 
-        // Hide multi choice confirm button, set reference, and button listener 
+        // Ocultar botón de confirmación de opción múltiple, establecer referencia y escucha de botón
         if (transform.Find("MultiChoiceButton"))
         {
             multiChoiceButton = transform.Find("MultiChoiceButton").gameObject;
@@ -279,25 +293,29 @@ public class TriviaGameManager : MonoBehaviour
             multiChoiceButton.GetComponent<Button>().onClick.AddListener(delegate() { CheckMultiChoice(); });
         }
 
-        // Find the "Answer" object which holds all the answer buttons, and assign all the answer buttons to an array for easier access
+
+        // Busque el objeto "Respuesta" que contiene todos los botones de respuesta
+        // y asigne todos los botones de respuesta a una matriz para facilitar el acceso
         if (GameObject.Find("Answers"))
         {
-            // Define the answers holder which we will fill with the answer buttons
+            //Definimos el contenedor de respuestas el cual llenaremos con los botones de respuesta
             Transform answersHolder = GameObject.Find("Answers").transform;
 
-            // Prepare the list of answer buttons so we can fill it out
+
+            // Prepara la lista de botones de respuesta para que podamos completarla
             answerObjects = new Transform[answersHolder.childCount];
 
-            // Assign the answer buttons
+
+            //Asigna los botones de respuesta
             for (index = 0; index < answerObjects.Length; index++) answerObjects[index] = answersHolder.GetChild(index);
 
-            // Listen for a click on each button to choose the answer
+            // Escuche un clic en cada botón para elegir la respuesta
             foreach (Transform answerObject in answerObjects)
             {
-                // We need this temporary variable to be able to assign event listeners to multiple objects
+                // Necesitamos esta variable temporal para poder asignar detectores de eventos a múltiples objetos
                 Transform tempAnswerObject = answerObject;
 
-                // Listen for a click to choose the answer
+                // Escuche un clic para elegir la respuesta
                 tempAnswerObject.GetComponent<Button>().onClick.AddListener(delegate()
                 {
                     ChooseAnswer(tempAnswerObject);
@@ -305,23 +323,28 @@ public class TriviaGameManager : MonoBehaviour
             }
         }
 
-        // Clear all the answers
+        // Borrar todas las respuestas
         foreach (Transform answerObject in answerObjects)
         {
-            // Clear the answer text
+            // Borrar el texto de la respuesta
             answerObject.Find("Text").GetComponent<Text>().text = "";
 
-            // Hide answer outline 
+
+            // Ocultar esquema de respuesta
             if (answerObject.Find("Outline")) answerObject.Find("Outline").GetComponent<Image>().enabled = false;
 
-            // Deactivate the answer object
+            // Desactivar el objeto de respuesta
             answerObject.gameObject.SetActive(false);
         }
 
-        //Update score for player
+        //Actualizar score del jugador
         UpdateScore();
     }
 
+    /// <summary>
+    /// Carga las preguntas de la categoria desde la base de datos
+    /// </summary>
+    /// <param name="selectedCategoryID">Número de ID de la categoría a cargar</param>
     private void LoadQuestionsFromDatabase(int selectedCategoryID)
     {
         var questionsTable = triviaDB.GetTable_Questions(); // Obtiene la tabla de preguntas
@@ -365,145 +388,142 @@ public class TriviaGameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Prepares the question list and starts the game. Also loads the XML questions from an online address if it exists.
+    /// Prepara la lista de preguntas e inicia el juego.
     /// </summary>
     public void StartGame()
     {
-        isGameOver = false;
+        isGameOver = false; // Indica que el juego aún no ha terminado.
 
-        // Record the game start time so we can check how long the quiz took at the end of the game
+        // Registra la hora de inicio del juego para poder verificar cuánto tiempo tomó el cuestionario al final del juego.
         startTime = DateTime.Now;
 
-        // The index of the first question in the question list is actually -1, so we adjust the number from the component ( 1 becomes -1, 2 becomes 0, 10 becomes 8, etc )
+        // El índice de la primera pregunta en la lista de preguntas es en realidad -1, así que ajustamos el número desde el componente (1 se convierte en -1, 2 en 0, 10 en 8, etc.)
         currentQuestion = firstQuestion;
 
-        // Reset the question counter
+        // Restablece el contador de preguntas.
         questionCount = 0;
 
-        // Make sure the question limit isn't larger than the actual number of questions available
+        // Asegúrate de que el límite de preguntas no sea mayor que el número real de preguntas disponibles.
         questionLimit = Mathf.Clamp(questionLimit, 0, questions.Length);
 
-
-        // Go through all the questions and overwrite their time values with the quiz-wide values, if they exist
+        // Recorre todas las preguntas y sobrescribe sus valores de tiempo con los valores generales del cuestionario, si existen.
         if (quizTime > 0)
             foreach (Pregunta question in questions)
                 question.time = quizTime;
 
-        // Go through all the questions and overwrite their bonus values with the quiz-wide values, if they exist
+        // Recorre todas las preguntas y sobrescribe sus valores de bonificación con los valores generales del cuestionario, si existen.
         if (quizBonus > 0)
             foreach (Pregunta question in questions)
                 question.bonus = quizBonus;
 
-        // Set the list of questions for this match
+        // Establece la lista de preguntas para este partido.
         SetQuestionList();
 
-        // Ask the first question
+        // Hacer la primera pregunta.
         StartCoroutine(AskQuestion(false));
     }
 
+
     /// <summary>
-    /// Update is called every frame, if the MonoBehaviour is enabled.
+    /// Update se llama cada frame, si MonoBehaviour está habilitado.
     /// </summary>
     void Update()
     {
-        // Make the score count up to its current value, for the current player
+        // Hacer que la puntuación aumente hasta su valor actual, para el jugador actual
         if (player.score < player.scoreCount)
         {
-            // Count up to the courrent value
+            // Aumentar hasta el valor actual
             player.score = Mathf.Lerp(player.score, player.scoreCount, Time.deltaTime * 10);
 
-            // Round up the score value
+            // Redondear el valor de la puntuación hacia arriba
             player.score = Mathf.CeilToInt(player.score);
 
-            // Update the score text
+            // Actualizar el texto de la puntuación
             UpdateScore();
         }
 
+        // Actualizar la barra de vidas
 
-        // Update the lives bar
-
-        //If the lives bar has a text in it, update it. Otherwise, resize the lives bar based on the number of lives left
+        // Si la barra de vidas tiene un texto en ella, actualizarlo. De lo contrario, cambiar el tamaño de la barra de vidas basándose en el número de vidas restantes
         if (player.livesBar.transform.Find("Text"))
-            player.livesBar.transform.Find("Text").GetComponent<Text>().text =
-                player.lives.ToString();
+            player.livesBar.transform.Find("Text").GetComponent<Text>().text = player.lives.ToString();
         else
             player.livesBar.rectTransform.sizeDelta = Vector2.Lerp(
                 player.livesBar.rectTransform.sizeDelta,
                 new Vector2(player.lives * livesBarWidth,
                     player.livesBar.rectTransform.sizeDelta.y), Time.deltaTime * 8);
 
-
         if (isGameOver == false)
         {
-            // If we use the keyboard or gamepad, keyboardControls take effect
+            // Si usamos el teclado o gamepad, los controles de teclado toman efecto
             if (keyboardControls == false && (Input.GetAxis("Horizontal") != 0 || Input.GetAxis("Vertical") != 0))
             {
                 keyboardControls = true;
 
-                // If no answer is selected, select the next available answer button
+                // Si no hay respuesta seleccionada, seleccionar el siguiente botón de respuesta disponible
                 if (askingQuestion == true && eventSystem.firstSelectedGameObject == null)
                 {
-                    // Go through the answer buttons and select the first available one
+                    // Recorrer los botones de respuesta y seleccionar el primero disponible
                     for (index = 0; index < answerObjects.Length; index++)
                     {
                         if (answerObjects[index].GetComponent<Button>().IsInteractable() == true)
                         {
                             eventSystem.SetSelectedGameObject(answerObjects[index].gameObject);
-
                             break;
                         }
                     }
                 }
             }
 
-            // If we move the mouse in any direction or click it, or touch the screen on a mobile device, then keyboard/gamepad controls are lost
+            // Si movemos el ratón en cualquier dirección o hacemos clic, o tocamos la pantalla en un dispositivo móvil, entonces se pierden los controles de teclado/gamepad
             if (Input.GetAxisRaw("Mouse X") != 0 || Input.GetAxisRaw("Mouse Y") != 0 || Input.GetMouseButtonDown(0) ||
                 Input.touchCount > 0) keyboardControls = false;
 
-            // Count down the time until game over
+            // Contar el tiempo hasta el fin del juego
             if (timeLeft > 0 && timerRunning == true)
             {
-                // Count down the time
+                // Contar hacia atrás el tiempo
                 timeLeft -= Time.deltaTime;
             }
 
-            // Update the timer
+            // Actualizar el temporizador
             UpdateTime();
         }
 
-        // Update the play sound time
+        // Actualizar el tiempo de reproducción de sonido
         if (soundPlayTime > 0) soundPlayTime -= Time.deltaTime;
     }
 
+
     /// <summary>
-    /// Sets the question list, first shuffling them, then sorting them by bonus value, 
-    /// and finally choosing a limited number of questions from each bonus group
+    /// Establece la lista de preguntas, primero barajándolas, luego ordenándolas por valor de bonificación,
+    /// y finalmente eligiendo un número limitado de preguntas de cada grupo de bonificación.
     /// </summary>
     void SetQuestionList()
     {
-        // Shuffle all the available questions
+        // Baraja todas las preguntas disponibles
         if (randomizeQuestions == true) questions = ShuffleQuestions(questions);
     }
 
     /// <summary>
-    /// Shuffles the specified questions list, and returns it
+    /// Baraja la lista de preguntas especificada y la devuelve.
     /// </summary>
-    /// <param name="questions">A list of questions</param>
+    /// <param name="questions">Una lista de preguntas</param>
     Pregunta[] ShuffleQuestions(Pregunta[] questions)
     {
-        // Go through all the questions and shuffle them
+        // Recorre todas las preguntas y las baraja
         for (index = 0; index < questions.Length; index++)
         {
-            // Hold the question in a temporary variable
+            // Mantiene la pregunta en una variable temporal
             Pregunta tempQuestion = questions[index];
 
-            // Choose a random index from the question list
+            // Elige un índice aleatorio de la lista de preguntas
             int randomIndex = UnityEngine.Random.Range(index, questions.Length);
 
-            // Assign a random question from the list
+            // Asigna una pregunta aleatoria de la lista
             questions[index] = questions[randomIndex];
 
-            // Assign the temporary question to the random question we chose
+            // Asigna la pregunta temporal a la pregunta aleatoria que elegimos
             questions[randomIndex] = tempQuestion;
         }
 
@@ -511,213 +531,209 @@ public class TriviaGameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Shuffles the specified answers list, and returns it
+    /// Baraja la lista de respuestas especificada y la devuelve.
     /// </summary>
-    /// <param name="answers">A list of answers</param>
+    /// <param name="answers">Una lista de respuestas</param>
     Respuesta[] ShuffleAnswers(Respuesta[] answers)
     {
-        // Go through all the answers and shuffle them
+        // Recorre todas las respuestas y las baraja
         for (index = 0; index < answers.Length; index++)
         {
-            // Hold the question in a temporary variable
+            // Mantiene la respuesta en una variable temporal
             Respuesta tempAnswer = answers[index];
 
-            // Choose a random index from the question list
+            // Elige un índice aleatorio de la lista de respuestas
             int randomIndex = UnityEngine.Random.Range(index, answers.Length);
 
-            // Assign a random question from the list
+            // Asigna una respuesta aleatoria de la lista
             answers[index] = answers[randomIndex];
 
-            // Assign the temporary question to the random question we chose
+            // Asigna la respuesta temporal a la respuesta aleatoria que elegimos
             answers[randomIndex] = tempAnswer;
         }
 
         return answers;
     }
 
-
     /// <summary>
-    /// Presents a question from the list, along with possible answers.
+    /// Presenta una pregunta de la lista, junto con las posibles respuestas.
     /// </summary>
     IEnumerator AskQuestion(bool animateQuestion)
     {
         if (isGameOver == false)
         {
-            // We are now asking a question
+            // Estamos haciendo una pregunta ahora
             askingQuestion = true;
-            
-            // Go to the next question
+
+            // Pasar a la siguiente pregunta
             currentQuestion++;
-            
+
             if (currentQuestion >= questions.Length)
             {
                 Debug.Log(currentQuestion);
                 Debug.Log(questions.Length);
-                // Display a text indicating that we are resetting the question list 
+                // Mostrar un texto indicando que estamos reiniciando la lista de preguntas
                 questionObject.Find("Text").GetComponent<Text>().text =
-                    " Se han realizado todas las preguntas del cuestionario.";
-                // Instead of resetting the questions, end the game here
-                Debug.Log("All questions have been asked. Ending game.");
+                    "Se han realizado todas las preguntas del cuestionario.";
+                // En lugar de reiniciar las preguntas, terminar el juego aquí
+                Debug.Log("Todas las preguntas han sido realizadas. Terminando el juego.");
                 yield return new WaitForSeconds(2.5f);
-                StartCoroutine(Victory(0)); // Trigger the victory or game over sequence
-                yield break; // Exit the coroutine early
+                StartCoroutine(Victory(0)); // Activar la secuencia de victoria o fin del juego
+                yield break; // Salir temprano de la coroutine
             }
 
-
-            // Animate the question
-            if (animationQuestion)
+            // Animar la pregunta
+            if (animateQuestion)
             {
-                // If the animation clip doesn't exist in the animation component, add it
+                // Si el clip de animación no existe en el componente de animación, añadirlo
                 if (questionObject.GetComponent<Animation>().GetClip(animationQuestion.name) == null)
                     questionObject.GetComponent<Animation>().AddClip(animationQuestion, animationQuestion.name);
 
-                // Play the animation
+                // Reproducir la animación
                 questionObject.GetComponent<Animation>().Play(animationQuestion.name);
 
-                // Wait for half the animation time, then display the next question. This will make the question appear while the question tab flips. Just a nice effect
+                // Esperar la mitad del tiempo de la animación, luego mostrar la siguiente pregunta. Esto hace que la pregunta aparezca mientras la pestaña de la pregunta se voltea. Solo un efecto agradable
                 yield return new WaitForSeconds(questionObject.GetComponent<Animation>().clip.length * 0.5f);
             }
 
-            // If we still have questions in the list, ask the next question
+            // Si todavía tenemos preguntas en la lista, hacer la siguiente pregunta
             if (currentQuestion < questions.Length)
             {
-                // Display the current question
+                // Mostrar la pregunta actual
                 questionObject.Find("Text").GetComponent<Text>().text = questions[currentQuestion].question;
 
-                // if the question is multi choice, show check button
+                // si la pregunta es de elección múltiple, mostrar el botón de verificación
                 if (multiChoiceButton) multiChoiceButton.SetActive(questions[currentQuestion].multiChoice);
 
-                // Set the time for this question, unless we have a global timer, in which case ignore the local time of the question
+                // Establecer el tiempo para esta pregunta, a menos que tengamos un temporizador global, en cuyo caso ignorar el tiempo local de la pregunta
                 if (globalTime <= 0) timeLeft = questions[currentQuestion].time;
 
-                // Start the timer
+                // Iniciar el temporizador
                 timerRunning = true;
 
-                // Clear all the answers
+                // Limpiar todas las respuestas
                 foreach (Transform answerObject in answerObjects)
                 {
                     answerObject.Find("Text").GetComponent<Text>().text = "";
 
-                    // Hide the answer outline
+                    // Ocultar el contorno de la respuesta
                     if (answerObject.Find("Outline"))
                         answerObject.Find("Outline").GetComponent<Image>().enabled = false;
 
-                    // If the answer has an image, clear it and hide it
+                    // Si la respuesta tiene una imagen, borrarla y ocultarla
                     if (answerObject.Find("Image"))
                     {
                         answerObject.Find("Image").GetComponent<Image>().sprite = null;
                         answerObject.Find("Image").gameObject.SetActive(false);
                     }
 
-                    // If the answer has a video, hide it
+                    // Si la respuesta tiene un video, ocultarlo
                     if (answerObject.Find("Video")) answerObject.Find("Video").gameObject.SetActive(false);
                 }
 
-                // Shuffle the list of answers
+                // Barajar la lista de respuestas
                 if (randomizeAnswers == true)
                     questions[currentQuestion].answers = ShuffleAnswers(questions[currentQuestion].answers);
 
-                // Display the wrong and correct answers in the answer slots
-                for (index = 0;
-                     index < questions[currentQuestion].answers.Length;
-                     index++) //  answerObjects.Length; index++)
+                // Mostrar las respuestas incorrectas y correctas en los espacios de respuesta
+                for (index = 0; index < questions[currentQuestion].answers.Length; index++)
                 {
-                    // If the answer object is inactive, activate it
-                    if (answerObjects[index].gameObject.activeSelf == false)
+                    // Si el objeto de respuesta está inactivo, activarlo
+                    if (!answerObjects[index].gameObject.activeSelf)
                         answerObjects[index].gameObject.SetActive(true);
 
-                    // Play the animation Show
+                    // Reproducir la animación Show
                     if (animationShow)
                     {
-                        // If the animation clip doesn't exist in the animation component, add it
+                        // Si el clip de animación no existe en el componente de animación, añadirlo
                         if (answerObjects[index].GetComponent<Animation>().GetClip(animationShow.name) == null)
-                            answerObjects[index].GetComponent<Animation>()
-                                .AddClip(animationShow, animationShow.name);
+                            answerObjects[index].GetComponent<Animation>().AddClip(animationShow, animationShow.name);
 
-                        // Play the animation
+                        // Reproducir la animación
                         answerObjects[index].GetComponent<Animation>().Play(animationShow.name);
                     }
 
-                    // Enable the button so we can press it
+                    // Habilitar el botón para que podamos presionarlo
                     answerObjects[index].GetComponent<Button>().interactable = true;
 
-                    // Select each button as it becomes enabled. This action solves a bug that appeared in Unity 5.5 where buttons stay highlighted from the previous question.
+                    // Seleccionar cada botón a medida que se habilita. Esta acción resuelve un bug que apareció en Unity 5.5 donde los botones permanecen resaltados de la pregunta anterior.
                     answerObjects[index].GetComponent<Button>().Select();
 
-                    // Display the text of the answer
+                    // Mostrar el texto de la respuesta
                     if (index < questions[currentQuestion].answers.Length)
                         answerObjects[index].Find("Text").GetComponent<Text>().text =
                             questions[currentQuestion].answers[index].answer;
-                    else answerObjects[index].gameObject.SetActive(false);
+                    else
+                        answerObjects[index].gameObject.SetActive(false);
                 }
 
-                // If we started a new bonus group, reset the question counter
+                // Si comenzamos un nuevo grupo de bonificación, restablecer el contador de preguntas
                 if (bonus > questions[currentQuestion].bonus) questionCount = 0;
 
-                // Set the bonus we can get for this question 
+                // Establecer la bonificación que podemos obtener por esta pregunta
                 bonus = questions[currentQuestion].bonus;
 
                 if (bonusObject && bonusObject.GetComponent<Animation>())
                 {
-                    // Animate the bonus object
+                    // Animar el objeto de bonificación
                     bonusObject.GetComponent<Animation>().Play();
 
-                    // Reset the bonus animation
+                    // Restablecer la animación de bonificación
                     bonusObject.GetComponent<Animation>()[bonusObject.GetComponent<Animation>().clip.name].speed =
                         -1;
 
-                    // Display the bonus text
+                    // Mostrar el texto de bonificación
                     bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
                 }
 
-                // If keyboard controls are on, highlight the first answer. Otherwise, deselect all answers
+                // Si los controles de teclado están activados, resaltar la primera respuesta. De lo contrario, deseleccionar todas las respuestas
                 if (keyboardControls == true) eventSystem.SetSelectedGameObject(answerObjects[0].gameObject);
                 else eventSystem.SetSelectedGameObject(null);
 
-                //If there is a source and a sound, play it from the source
+                // Si hay una fuente y un sonido, reproducirlo desde la fuente
                 if (soundSource && soundQuestion)
                     soundSource.GetComponent<AudioSource>().PlayOneShot(soundQuestion);
             }
-            else // If we have no more questions in the list, win the game
+            else // Si no tenemos más preguntas en la lista, ganar el juego
             {
-                //Disable the question object
-                //questionObject.gameObject.SetActive(false);
-                
-                //If we have no more questions, we win the game!
+                // Desactivar el objeto de pregunta
+                // questionObject.gameObject.SetActive(false);
+
+                // ¡Si no tenemos más preguntas, ganamos el juego!
                 StartCoroutine(Victory(0));
             }
 
-            // If we have a question limit, count towards it to win
+            // Si tenemos un límite de preguntas, contar hacia él para ganar
             if (isGameOver == false && questionLimit > 0)
             {
                 questionLimitCount++;
 
                 Debug.Log("REACHING");
-                // If we reach the question limit, win the game
+                // Si alcanzamos el límite de preguntas, ganar el juego
                 if (questionLimitCount > questionLimit) StartCoroutine(Victory(0));
             }
 
             else
             {
-                // Ask the next question
+                // Hacer la siguiente pregunta
                 StartCoroutine(AskQuestion(true));
             }
         }
     }
 
     /// <summary>
-    /// Chooses an answer from the list by index
+    /// Elige una respuesta de la lista por índice.
     /// </summary>
-    /// <param name="answerIndex">The number of the answer we chose</param>
+    /// <param name="answerSource">La fuente de la respuesta que elegimos</param>
     public void ChooseAnswer(Transform answerSource)
     {
-        // Get the index of this answer object
+        // Obtener el índice de este objeto de respuesta
         int answerIndex = answerSource.GetSiblingIndex();
 
-        // We can only choose an answer if a question is being asked now
+        // Solo podemos elegir una respuesta si actualmente se está haciendo una pregunta
         if (askingQuestion == true)
         {
-            // If this is a multi-choice question, allow the player to choose more than one question before checking the result
+            // Si esta es una pregunta de elección múltiple, permitir al jugador elegir más de una respuesta antes de verificar el resultado
             if (questions[currentQuestion].multiChoice == true)
             {
                 if (answerObjects[answerIndex].Find("Outline"))
@@ -727,34 +743,33 @@ public class TriviaGameManager : MonoBehaviour
                 return;
             }
 
-            // If the chosen answer is wrong, disable it and reduce the bonus for this question
-            //if ( answerObjects[answerIndex].Find("Text").GetComponent<Text>().text != questions[currentQuestion].correctAnswer )
-            if (questions[currentQuestion].answers[answerIndex].isCorrect == false)
+            // Si la respuesta elegida es incorrecta, deshabilitarla y reducir el bono para esta pregunta
+            if (!questions[currentQuestion].answers[answerIndex].isCorrect)
             {
-                // Play the animation Wrong
+                // Reproducir la animación de respuesta incorrecta
                 if (animationWrong)
                 {
-                    // If the animation clip doesn't exist in the animation component, add it
+                    // Si el clip de animación no existe en el componente de animación, añadirlo
                     if (answerObjects[answerIndex].GetComponent<Animation>().GetClip(animationWrong.name) == null)
                         answerObjects[answerIndex].GetComponent<Animation>()
                             .AddClip(animationWrong, animationWrong.name);
 
-                    // Play the animation
+                    // Reproducir la animación
                     answerObjects[answerIndex].GetComponent<Animation>().Play(animationWrong.name);
                 }
 
-                // Disable the button so we can't press it again
+                // Deshabilitar el botón para que no podamos presionarlo de nuevo
                 answerObjects[answerIndex].GetComponent<Button>().interactable = false;
 
-                // If no answer is selected, select the next available answer button
+                // Si no hay respuesta seleccionada, seleccionar el siguiente botón de respuesta disponible
                 if (eventSystem.firstSelectedGameObject == null)
                 {
-                    // Go through the answer buttons and select the first available one
-                    for (index = 0; index < answerObjects.Length; index++)
+                    // Recorrer los botones de respuesta y seleccionar el primero disponible
+                    for (int index = 0; index < answerObjects.Length; index++)
                     {
-                        if (answerObjects[index].GetComponent<Button>().IsInteractable() == true)
+                        if (answerObjects[index].GetComponent<Button>().IsInteractable())
                         {
-                            if (Application.isMobilePlatform == false && keyboardControls == true)
+                            if (!Application.isMobilePlatform && keyboardControls)
                                 eventSystem.SetSelectedGameObject(answerObjects[index].gameObject);
 
                             break;
@@ -762,135 +777,135 @@ public class TriviaGameManager : MonoBehaviour
                     }
                 }
 
+                // Reducir el bono a la mitad de su valor actual
+                bonus *= 0.5f;
 
-                // Cut the bonus to half its current value
-                bonus *= bonusLoss;
+                // Perder algo de tiempo como penalización
+                timeLeft -= 10f; // asumiendo timeLoss es 10 segundos
 
-                // Lose some time as a penalty
-                timeLeft -= timeLoss;
-
-                // Display the bonus text
+                // Mostrar el texto del bono
                 if (bonusObject) bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
 
-                // Increase the mistake count
+                // Aumentar el contador de errores
                 mistakeCount++;
 
-                // If we reach the maximum number of mistakes, give no bonus and move on to the next question
+                // Si alcanzamos el número máximo de errores, dar sin bono y pasar a la siguiente pregunta
                 if (mistakeCount >= maximumMistakes)
                 {
-                    // Give no bonus
+                    // No dar bono
                     bonus = 0;
 
-                    // Display the bonus text
+                    // Mostrar el texto del bono
                     if (bonusObject) bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
 
-                    // Reduce from lives
+                    // Reducir las vidas
                     player.lives--;
 
-                    // Update the lives we have left
+                    // Actualizar las vidas que quedan
                     Updatelives();
 
-                    // Add to the stat wrong answer
+                    // Aumentar la estadística de respuestas incorrectas
                     wrongAnswers++;
 
-                    // Show the result of this question, which is wrong
+                    // Mostrar el resultado de esta pregunta, que es incorrecto
                     ShowResult(false);
                 }
 
-
-                //If there is a source and a sound, play it from the source
+                // Si hay una fuente y un sonido, reproducirlo desde la fuente
                 if (soundSource && soundWrong) soundSource.GetComponent<AudioSource>().PlayOneShot(soundWrong);
             }
-            else // Choosing the correct answer
+            else // Elegir la respuesta correcta
             {
-                // If we answered correctly this round, increase the question count for this bonus group
+                // Si respondimos correctamente en esta ronda, aumentar el contador de preguntas para este grupo de bonificación
                 questionCount++;
 
-                // Increase the count of the correct answers. This is used to show how many answers we got right at the end of the game
+                // Aumentar el contador de respuestas correctas. Esto se usa para mostrar cuántas respuestas acertamos al final del juego
                 correctAnswers++;
 
-                // Play the animation Correct
+                // Reproducir la animación de respuesta correcta
                 if (animationCorrect)
                 {
-                    // If the animation clip doesn't exist in the animation component, add it
+                    // Si el clip de animación no existe en el componente de animación, añadirlo
                     if (answerObjects[answerIndex].GetComponent<Animation>().GetClip(animationCorrect.name) == null)
                         answerObjects[answerIndex].GetComponent<Animation>()
                             .AddClip(animationCorrect, animationCorrect.name);
 
-                    // Play the animation
+                    // Reproducir la animación
                     answerObjects[answerIndex].GetComponent<Animation>().Play(animationCorrect.name);
                 }
 
-
-                // Animate the bonus being added to the score
+                // Animar el bono siendo añadido al puntaje
                 if (bonusObject && bonusObject.GetComponent<Animation>())
                 {
-                    // Play the animation
+                    // Reproducir la animación
                     bonusObject.GetComponent<Animation>().Play();
 
-                    // Reset the speed of the animation
+                    // Restablecer la velocidad de la animación
                     bonusObject.GetComponent<Animation>()[bonusObject.GetComponent<Animation>().clip.name].speed = 1;
                 }
 
-                // Add the bonus to the score of the current player
+                // Añadir el bono al puntaje del jugador actual
                 player.scoreCount += bonus;
 
-                // Add the time bonus to the time left, if we have a global timer
+                // Añadir el bono de tiempo al tiempo restante, si tenemos un temporizador global
                 if (globalTime > 0)
                 {
-                    timeLeft += timeBonus;
+                    timeLeft += 30; // asumiendo timeBonus es 30 segundos
 
-                    // If we have go beyond the original global time value, updated the fill bar to accomodate the new value
+                    // Si hemos superado el valor original del tiempo global, actualizar la barra de relleno para acomodar el nuevo valor
                     if (timeLeft > globalTime) globalTime = timeLeft;
                 }
 
-                //If there is a source and a sound, play it from the source
+                // Si hay una fuente y un sonido, reproducirlo desde la fuente
                 if (soundSource && soundCorrect) soundSource.GetComponent<AudioSource>().PlayOneShot(soundCorrect);
 
-                // Show the result of this question, which is correct
+                // Mostrar el resultado de esta pregunta, que es correcto
                 ShowResult(true);
             }
         }
     }
 
+    /// <summary>
+    /// Verifica las respuestas de una pregunta de elección múltiple.
+    /// </summary>
     public void CheckMultiChoice()
     {
-        // Hide the check button
+        // Ocultar el botón de verificación
         multiChoiceButton.SetActive(false);
 
         bool goodResult = true;
 
         for (int answerIndex = 0; answerIndex < questions[currentQuestion].answers.Length; answerIndex++)
         {
-            // Disable the button so we can't press it again
+            // Deshabilitar el botón para que no podamos presionarlo nuevamente
             answerObjects[answerIndex].GetComponent<Button>().interactable = false;
 
             if (questions[currentQuestion].answers[answerIndex].isCorrect ==
                 answerObjects[answerIndex].Find("Outline").GetComponent<Image>().enabled)
             {
-                // Play the animation Wrong
+                // Reproducir la animación Correcta
                 if (animationCorrect)
                 {
-                    // If the animation clip doesn't exist in the animation component, add it
+                    // Si el clip de animación no existe en el componente de animación, añadirlo
                     if (answerObjects[answerIndex].GetComponent<Animation>().GetClip(animationCorrect.name) == null)
                         answerObjects[answerIndex].GetComponent<Animation>()
                             .AddClip(animationCorrect, animationCorrect.name);
 
-                    // Play the animation
+                    // Reproducir la animación
                     answerObjects[answerIndex].GetComponent<Animation>().Play(animationCorrect.name);
                 }
             }
             else
             {
-                // Play the animation Wrong
+                // Reproducir la animación Incorrecta
                 if (animationWrong)
                 {
-                    // If the animation clip doesn't exist in the animation component, add it
+                    // Si el clip de animación no existe en el componente de animación, añadirlo
                     if (answerObjects[answerIndex].GetComponent<Animation>().GetClip(animationWrong.name) == null)
                         answerObjects[answerIndex].GetComponent<Animation>()
                             .AddClip(animationWrong, animationWrong.name);
 
-                    // Play the animation
+                    // Reproducir la animación
                     answerObjects[answerIndex].GetComponent<Animation>().Play(animationWrong.name);
                 }
 
@@ -898,51 +913,50 @@ public class TriviaGameManager : MonoBehaviour
             }
         }
 
-        if (goodResult == true)
+        if (goodResult)
         {
-            // If we answered correctly this round, increase the question count for this bonus group
+            // Si respondimos correctamente esta ronda, aumentar el contador de preguntas para este grupo de bonificación
             questionCount++;
 
-            // Increase the count of the correct answers. This is used to show how many answers we got right at the end of the game
+            // Aumentar el contador de respuestas correctas. Esto se usa para mostrar cuántas respuestas acertamos al final del juego
             correctAnswers++;
 
-
-            // Animate the bonus being added to the score
+            // Animar el bono siendo añadido al puntaje
             if (bonusObject && bonusObject.GetComponent<Animation>())
             {
-                // Play the animation
+                // Reproducir la animación
                 bonusObject.GetComponent<Animation>().Play();
 
-                // Reset the speed of the animation
+                // Restablecer la velocidad de la animación
                 bonusObject.GetComponent<Animation>()[bonusObject.GetComponent<Animation>().clip.name].speed = 1;
             }
 
-            // Add the bonus to the score of the current player
+            // Añadir el bono al puntaje del jugador actual
             player.scoreCount += bonus;
 
-            // Add the time bonus to the time left, if we have a global timer
+            // Añadir el bono de tiempo al tiempo restante, si tenemos un temporizador global
             if (globalTime > 0)
             {
                 timeLeft += timeBonus;
 
-                // If we have go beyond the original global time value, updated the fill bar to accomodate the new value
+                // Si vamos más allá del valor original del tiempo global, actualizar la barra de llenado para acomodar el nuevo valor
                 if (timeLeft > globalTime) globalTime = timeLeft;
             }
 
-            //If there is a source and a sound, play it from the source
+            // Si hay una fuente y un sonido, reproducirlo desde la fuente
             if (soundSource && soundCorrect) soundSource.GetComponent<AudioSource>().PlayOneShot(soundCorrect);
         }
         else
         {
-            // If no answer is selected, select the next available answer button
+            // Si no hay respuesta seleccionada, seleccionar el siguiente botón de respuesta disponible
             if (eventSystem.firstSelectedGameObject == null)
             {
-                // Go through the answer buttons and select the first available one
-                for (index = 0; index < answerObjects.Length; index++)
+                // Recorrer los botones de respuesta y seleccionar el primero disponible
+                for (int index = 0; index < answerObjects.Length; index++)
                 {
-                    if (answerObjects[index].GetComponent<Button>().IsInteractable() == true)
+                    if (answerObjects[index].GetComponent<Button>().IsInteractable())
                     {
-                        if (Application.isMobilePlatform == false && keyboardControls == true)
+                        if (!Application.isMobilePlatform && keyboardControls)
                             eventSystem.SetSelectedGameObject(answerObjects[index].gameObject);
 
                         break;
@@ -950,398 +964,387 @@ public class TriviaGameManager : MonoBehaviour
                 }
             }
 
-
-            // Cut the bonus to half its current value
+            // Reducir el bono a la mitad de su valor actual
             bonus *= bonusLoss;
 
-            // Lose some time as a penalty
+            // Perder algo de tiempo como penalización
             timeLeft -= timeLoss;
 
-            // Display the bonus text
+            // Mostrar el texto del bono
             if (bonusObject) bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
 
-            // Increase the mistake count
+            // Aumentar el contador de errores
             mistakeCount++;
 
-            // If we reach the maximum number of mistakes, give no bonus and move on to the next question
-            if (mistakeCount >= 1)
+            // Si alcanzamos el número máximo de errores, dar sin bono y pasar a la siguiente pregunta
+            if (mistakeCount >= maximumMistakes)
             {
-                // Give no bonus
+                // No dar bono
                 bonus = 0;
 
-                // Display the bonus text
+                // Mostrar el texto del bono
                 if (bonusObject) bonusObject.Find("Text").GetComponent<Text>().text = bonus.ToString();
 
-                // Reduce from lives
+                // Reducir de vidas
                 player.lives--;
 
-                // Update the lives we have left
+                // Actualizar las vidas que quedan
                 Updatelives();
 
-                // Add to the stat wrong answer
+                // Añadir a la estadística de respuestas incorrectas
                 wrongAnswers++;
 
-                // Show the result of this question, which is wrong
+                // Mostrar el resultado de esta pregunta, que es incorrecto
                 ShowResult(false);
             }
 
-            //If there is a source and a sound, play it from the source
+            // Si hay una fuente y un sonido, reproducirlo desde la fuente
             if (soundSource && soundWrong) soundSource.GetComponent<AudioSource>().PlayOneShot(soundWrong);
         }
 
+        // Mostrar el resultado de esta pregunta
         ShowResult(goodResult);
     }
 
     /// <summary>
-    /// Shows the result of the question, whether we answered correctly or not. Also displays a followup text and reveals a closeup image, if they exist
+    /// Muestra el resultado de la pregunta, indicando si la respuesta fue correcta o no. También muestra un texto de seguimiento y revela una imagen de primer plano, si existen.
     /// </summary>
-    /// <param name="isCorrectAnswer">We got the correct answer.</param>
+    /// <param name="isCorrectAnswer">Indica si obtuvimos la respuesta correcta.</param>
     public void ShowResult(bool isCorrectAnswer)
     {
-        // We are not asking a question now
+        // Ahora no estamos haciendo una pregunta
         askingQuestion = false;
 
-        // Stop the timer
+        // Detener el temporizador
         timerRunning = false;
 
-        // Reset the mistake counter
+        // Restablecer el contador de errores
         mistakeCount = 0;
 
-
-        // Disable the button from the question, so that we don't accidentally try to open an image that isn't there
+        // Deshabilitar el botón de la pregunta, para que no intentemos abrir una imagen que no está ahí
         if (questionObject.GetComponent<Button>()) questionObject.GetComponent<Button>().enabled = false;
 
-
-        // Go through all the answers and make them unclickable
-        for (index = 0; index < answerObjects.Length; index++)
+        // Recorrer todas las respuestas y hacerlas no clicables
+        for (int index = 0; index < answerObjects.Length; index++)
         {
-            // If this is the correct answer, highlight it and delay its animation
+            // Si esta es la respuesta correcta, resaltarla y retrasar su animación
             if (index < questions[currentQuestion].answers.Length)
             {
                 if (questions[currentQuestion].answers[index].isCorrect == true)
                 {
-                    // Highlight the correct answer
+                    // Resaltar la respuesta correcta
                     if (showCorrectAnswer == true) eventSystem.SetSelectedGameObject(answerObjects[index].gameObject);
                     else answerObjects[index].GetComponent<Button>().interactable = false;
                 }
                 else
                 {
-                    // Make all the buttons uninteractable
+                    // Hacer todos los botones no interactivos
                     answerObjects[index].GetComponent<Button>().interactable = false;
                 }
             }
         }
 
-
-        // Reset the question and answers in order to display the next question
+        // Restablecer la pregunta y las respuestas para mostrar la próxima pregunta
         StartCoroutine(ResetQuestion(0.5f));
     }
 
     /// <summary>
-    /// Resets the question and answers, in preparation for the next question
+    /// Restablece la pregunta y las respuestas, en preparación para la próxima pregunta.
     /// </summary>
-    /// <returns>The question.</returns>
-    /// <param name="delay">Delay in seconds before showing the next question</param>
+    /// <returns>La pregunta.</returns>
+    /// <param name="delay">Retraso en segundos antes de mostrar la próxima pregunta.</param>
     IEnumerator ResetQuestion(float delay)
     {
-        // Go through all the answers hide the wrong ones
-        for (index = 0; index < answerObjects.Length; index++)
+        // Recorrer todas las respuestas y ocultar las incorrectas
+        for (int index = 0; index < answerObjects.Length; index++)
         {
-            // If this is a wrong answer, hide it. Also if we are not supposed to show the correct answer, hide all the answers
+            // Si esta es una respuesta incorrecta, ocultarla. También si no se supone que debemos mostrar la respuesta correcta, ocultar todas las respuestas
             if (index < questions[currentQuestion].answers.Length &&
                 (questions[currentQuestion].answers[index].isCorrect == false || showCorrectAnswer == false))
             {
-                // Play the animation Hide, after the current animation is over
+                // Reproducir la animación Ocultar, después de que termine la animación actual
                 if (animationHide)
                 {
-                    // If the animation clip doesn't exist in the animation component, add it
+                    // Si el clip de animación no existe en el componente de animación, añadirlo
                     if (answerObjects[index].GetComponent<Animation>().GetClip(animationHide.name) == null)
                         answerObjects[index].GetComponent<Animation>().AddClip(animationHide, animationHide.name);
 
-                    // Play the animation queded in line after te current animation
+                    // Reproducir la animación en cola después de la animación actual
                     answerObjects[index].GetComponent<Animation>().PlayQueued(animationHide.name);
                 }
             }
         }
 
-        // If we are supposed to show the correct answer, find it and keep it animated longer than the other answers
+        // Si se supone que debemos mostrar la respuesta correcta, encontrarla y mantenerla animada más tiempo que las otras respuestas
         if (showCorrectAnswer == true && questions[currentQuestion].multiChoice == false)
         {
-            // Go through all the answers again and highlight the correct one
-            for (index = 0; index < answerObjects.Length; index++)
+            // Recorrer todas las respuestas nuevamente y resaltar la correcta
+            for (int index = 0; index < answerObjects.Length; index++)
             {
-                // If this is the correct answer, highlight it and delay its animation
-                //if ( answerObjects[index].Find("Text").GetComponent<Text>().text == questions[currentQuestion].correctAnswer )
+                // Si esta es la respuesta correcta, resaltarla y retrasar su animación
                 if (index < questions[currentQuestion].answers.Length &&
                     questions[currentQuestion].answers[index].isCorrect == true)
                 {
-                    // Highlight the correct answer
+                    // Resaltar la respuesta correcta
                     eventSystem.SetSelectedGameObject(answerObjects[index].gameObject);
 
-                    // Wait for a while
+                    // Esperar un momento
                     yield return new WaitForSeconds(0.5f);
 
-                    // Play the animation Hide
+                    // Reproducir la animación Ocultar
                     if (animationHide)
                     {
-                        // If the animation clip doesn't exist in the animation component, add it
+                        // Si el clip de animación no existe en el componente de animación, añadirlo
                         if (answerObjects[index].GetComponent<Animation>().GetClip(animationHide.name) == null)
                             answerObjects[index].GetComponent<Animation>().AddClip(animationHide, animationHide.name);
 
-                        // Play the animation
+                        // Reproducir la animación
                         answerObjects[index].GetComponent<Animation>().Play(animationHide.name);
                     }
                 }
             }
         }
 
-        // For for a while or until the currently playing sound ends
-        //if (soundPlayTime > 0 ) yield return new WaitForSeconds(soundPlayTime);
-        //else yield return new WaitForSeconds(delay);
-
+        // Esperar un rato o hasta que termine el sonido que se está reproduciendo actualmente
         yield return new WaitForSeconds(delay);
 
-        // Stop any sounds playing, and reset the sound play time
+        // Detener cualquier sonido que se esté reproduciendo y restablecer el tiempo de reproducción de sonido
         if (soundSource)
         {
-            if (isGameOver == false) soundSource.GetComponent<AudioSource>().Stop();
-
+            if (!isGameOver) soundSource.GetComponent<AudioSource>().Stop();
             soundPlayTime = 0;
         }
 
-
-        // Deselect the currently selected answer
+        // Deseleccionar la respuesta actualmente seleccionada
         eventSystem.SetSelectedGameObject(null);
 
-        // Ask the next question
+        // Hacer la próxima pregunta
         StartCoroutine(AskQuestion(true));
     }
 
+
     /// <summary>
-    /// Updates the timer text, and checks if time is up
+    /// Actualiza el texto del temporizador y verifica si se acabó el tiempo.
     /// </summary>
     void UpdateTime()
     {
-        // Update the time only if we have a timer object assigned
+        // Actualizar el tiempo solo si tenemos un objeto de temporizador asignado
         if (timerIcon || timerAnimated)
         {
-            // Using the timer icon, which uses FillAmount and Text to show the timer we have left
+            // Usando el icono de temporizador, que usa FillAmount y Text para mostrar el tiempo que nos queda
             if (timerIcon)
             {
-                // Update the timer circle, if we have one
+                // Actualizar el círculo del temporizador, si tenemos uno
                 if (timerBar)
                 {
-                    // If we have a global time, display the timer progress for it.
+                    // Si tenemos un tiempo global, mostrar el progreso del temporizador para eso.
                     if (globalTime > 0)
                     {
                         timerBar.fillAmount = timeLeft / globalTime;
                     }
                     else if
                         (timerRunning ==
-                         true) // If the timer is running, display the fill amount left for the question time. 
+                         true) // Si el temporizador está en marcha, mostrar la cantidad de relleno que queda para el tiempo de la pregunta.
                     {
                         timerBar.fillAmount = timeLeft / questions[currentQuestion].time;
                     }
-                    else // Otherwise refill the amount back to 100%
+                    else // De lo contrario, rellenar la cantidad de nuevo al 100%
                     {
                         timerBar.fillAmount = Mathf.Lerp(timerBar.fillAmount, 1, Time.deltaTime * 10);
                     }
                 }
 
-                // Update the timer text, if we have one
+                // Actualizar el texto del temporizador, si tenemos uno
                 if (timerText)
                 {
-                    // If the timer is running, display the timer left. Otherwise hide the text
+                    // Si el temporizador está en marcha, mostrar el tiempo que queda. De lo contrario, ocultar el texto
                     if (timerRunning == true || globalTime > 0) timerText.text = Mathf.RoundToInt(timeLeft).ToString();
                     else timerText.text = "";
                 }
             }
 
-            // Using the animated timer, which progresses the animation based on the timer we have left
+            // Usando el temporizador animado, que progresa la animación basada en el tiempo que nos queda
             if (timerAnimated && timerAnimated.isPlaying == false)
             {
-                // Start the timer animation
+                // Iniciar la animación del temporizador
                 timerAnimated.Play("TimerAnimatedProgress");
 
-                // If we have a global time, display the correct frame from the time animation
+                // Si tenemos un tiempo global, mostrar el fotograma correcto de la animación de tiempo
                 if (globalTime > 0)
                 {
                     timerAnimated["TimerAnimatedProgress"].time = (1 - (timeLeft / globalTime)) *
                                                                   timerAnimated["TimerAnimatedProgress"].clip.length;
                 }
                 else if
-                    (timerRunning == true) // If the timer is running, display the correct frame from the time animation
+                    (timerRunning ==
+                     true) // Si el temporizador está en marcha, mostrar el fotograma correcto de la animación de tiempo
                 {
                     timerAnimated["TimerAnimatedProgress"].time = (1 - (timeLeft / questions[currentQuestion].time)) *
                                                                   timerAnimated["TimerAnimatedProgress"].clip.length;
                 }
-                else // Otherwise rewind the time animation to the start
+                else // De lo contrario, rebobinar la animación de tiempo al inicio
                 {
                     timerAnimated["TimerAnimatedProgress"].time =
                         Mathf.Lerp(timerAnimated["TimerAnimatedProgress"].time, 1, Time.deltaTime * 10);
                 }
 
-                // Start animating
+                // Comenzar a animar
                 timerAnimated["TimerAnimatedProgress"].enabled = true;
 
-                // Record the current frame
+                // Registrar el fotograma actual
                 timerAnimated.Sample();
 
-                // Stop animating
+                // Detener la animación
                 timerAnimated["TimerAnimatedProgress"].enabled = false;
             }
 
-            // Time's up!
+            // ¡Se acabó el tiempo!
             if (timeLeft <= 0 && timerRunning == true)
             {
-                // If we have a global time and the timer ran out, just go straight to the GameOver screen
+                // Si tenemos un tiempo global y el temporizador se agotó, ir directamente a la pantalla de GameOver
                 if (globalTime > 0)
                 {
                     StartCoroutine(GameOver(1));
                 }
                 else
                 {
-                    // Reduce from lives
+                    // Reducir de vidas
                     player.lives--;
 
-                    // Update the lives we have left
+                    // Actualizar las vidas que nos quedan
                     Updatelives();
 
-                    // Show the result of this question, which is wrong ( because we ran out of time, we lost the question )
+                    // Mostrar el resultado de esta pregunta, que es incorrecto (porque se nos acabó el tiempo, perdimos la pregunta)
                     ShowResult(false);
                 }
 
-                // Play the timer icon animation
+                // Reproducir la animación del icono de temporizador
                 if (timerIcon && timerIcon.GetComponent<Animation>()) timerIcon.GetComponent<Animation>().Play();
 
-                // Play the animated timer's timeUp animation
+                // Reproducir la animación de tiempo agotado del temporizador animado
                 if (timerAnimated && timerAnimated.GetComponent<Animation>())
                 {
                     timerAnimated.Stop();
                     timerAnimated.Play("TimerAnimatedTimeUp");
                 }
 
-                //If there is a source and a sound, play it from the source
+                // Si hay una fuente y un sonido, reproducirlo desde la fuente
                 if (soundSource && soundTimeUp) soundSource.GetComponent<AudioSource>().PlayOneShot(soundTimeUp);
             }
         }
     }
 
     /// <summary>
-    /// Updates the score value and checks if we got to the next level
+    /// Actualiza el valor de la puntuación y verifica si alcanzamos el siguiente nivel.
     /// </summary>
     void UpdateScore()
     {
-        //Update the score text
-        //if ( scoreText )    scoreText.GetComponent<Text>().text = score.ToString();
-
-        //Update the score text for the current player
-        Debug.Log("PLAYER SCORE: " + player.score);
+        // Actualizar el texto de la puntuación
+        Debug.Log("PUNTUACIÓN DEL JUGADOR: " + player.score);
         if (player.scoreText) player.scoreText.GetComponent<Text>().text = player.score.ToString();
 
-        // If we reach the victory score we win the game
+        // Si alcanzamos la puntuación de la victoria ganamos el juego
         if (scoreToVictory > 0 && player.score >= scoreToVictory) StartCoroutine(Victory(0));
     }
 
     /// <summary>
-    /// Runs the game over event and shows the game over screen
+    /// Ejecuta el evento de fin del juego y muestra la pantalla de fin de juego.
     /// </summary>
     IEnumerator GameOver(float delay)
     {
         isGameOver = true;
 
-        // Calculate the quiz duration
+        // Calcular la duración del cuestionario
         playTime = DateTime.Now - startTime;
 
         yield return new WaitForSeconds(delay);
 
-        //Show the game over screen
+        // Mostrar la pantalla de fin de juego
         if (gameOverCanvas)
         {
-            //Show the game over screen
+            // Mostrar la pantalla de fin de juego
             gameOverCanvas.gameObject.SetActive(true);
 
-            //Write the score text, if it exists
+            // Escribir el texto de la puntuación, si existe
             if (gameOverCanvas.Find("ScoreTexts/TextScore"))
                 gameOverCanvas.Find("ScoreTexts/TextScore").GetComponent<Text>().text +=
                     " " + player.score.ToString();
 
-            //Check if we got a high score
+            // Verificar si obtuvimos un récord
             if (player.score > highScore)
             {
                 highScore = player.score;
 
-                //Register the new high score
+                // Registrar el nuevo récord
                 PlayerPrefs.SetFloat("HighScore", player.score);
 
                 OnUpdateLeaderboard();
             }
 
-            //Write the high sscore text
+            // Escribir el texto del récord
             gameOverCanvas.Find("ScoreTexts/TextHighScore").GetComponent<Text>().text += " " + highScore.ToString();
 
-            //If there is a source and a sound, play it from the source
+            // Si hay una fuente y un sonido, reproducirlo desde la fuente
             if (soundSource && soundGameOver) soundSource.GetComponent<AudioSource>().PlayOneShot(soundGameOver);
         }
     }
 
+
     /// <summary>
-    /// Runs the victory event and shows the victory screen
+    /// Ejecuta el evento de victoria y muestra la pantalla de victoria.
     /// </summary>
     IEnumerator Victory(float delay)
     {
-        // If this quiz has no questions at all, just return to the main menu
+        // Si este cuestionario no tiene preguntas en absoluto, simplemente regresa al menú principal.
         if (questions.Length <= 0) yield break;
 
         isGameOver = true;
 
-        // Calculate the quiz duration
+        // Calcular la duración del cuestionario.
         playTime = DateTime.Now - startTime;
 
         yield return new WaitForSeconds(delay);
 
-        //Show the game over screen
+        // Mostrar la pantalla de victoria.
         if (victoryCanvas)
         {
-            //Show the victory screen
+            // Mostrar la pantalla de victoria.
             victoryCanvas.gameObject.SetActive(true);
 
-            // If we have a TextScore and TextHighScore objects, then we are using the single player victory canvas
+            // Si tenemos objetos TextScore y TextHighScore, entonces estamos usando el lienzo de victoria para un solo jugador.
             if (victoryCanvas.Find("ScoreTexts/TextScore") && victoryCanvas.Find("ScoreTexts/TextHighScore"))
             {
-                //Write the score text, if it exists
+                // Escribir el texto de la puntuación, si existe.
                 victoryCanvas.Find("ScoreTexts/TextScore").GetComponent<Text>().text +=
                     " " + player.score.ToString();
 
-                //Check if we got a high score
+                // Verificar si obtuvimos un puntaje alto.
                 if (player.score > highScore)
                 {
                     highScore = player.score;
 
-                    //Register the new high score
-
+                    // Registrar el nuevo puntaje alto.
                     PlayerPrefs.SetFloat("HighScore", player.score);
 
                     OnUpdateLeaderboard();
                 }
 
-                //Write the high sscore text
+                // Escribir el texto del puntaje alto.
                 victoryCanvas.Find("ScoreTexts/TextHighScore").GetComponent<Text>().text += " " + highScore.ToString();
             }
 
-            // If we have a TextProgress object, then we can display how many questions we answered correctly
+            // Si tenemos un objeto TextProgress, entonces podemos mostrar cuántas preguntas respondimos correctamente.
             if (victoryCanvas.Find("ScoreTexts/TextProgress"))
             {
-                //Write the progress text
+                // Escribir el texto del progreso.
                 victoryCanvas.Find("ScoreTexts/TextProgress").GetComponent<Text>().text =
                     correctAnswers.ToString() + "/" + questionLimit.ToString();
             }
 
-            //If there is a source and a sound, play it from the source
+            // Si hay una fuente y un sonido, reproducirlo desde la fuente.
             if (soundSource && soundVictory) soundSource.GetComponent<AudioSource>().PlayOneShot(soundVictory);
         }
     }
-
 
     private void OnUpdateLeaderboard()
     {
@@ -1357,15 +1360,15 @@ public class TriviaGameManager : MonoBehaviour
                 (Info info) =>
                 {
                     if (info.isOK)
-                        Debug.Log("I have updated " + info.affectedRows + " Records.");
+                        Debug.Log("He actualizado " + info.affectedRows + " registros.");
                     else
-                        Debug.LogWarning("No record inserted!");
+                        Debug.LogWarning("¡No se insertó ningún registro!");
                 }
             );
     }
 
     /// <summary>
-    /// Restart the current level
+    /// Reinicia el nivel actual.
     /// </summary>
     public void Restart()
     {
@@ -1373,7 +1376,7 @@ public class TriviaGameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Restart the current level
+    /// Vuelve al menú principal.
     /// </summary>
     public void MainMenu()
     {
@@ -1381,55 +1384,54 @@ public class TriviaGameManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates the lives we have
+    /// Actualiza las vidas que tenemos.
     /// </summary>
     public void Updatelives()
     {
-        // Update lives only if we have a lives bar assigned
+        // Actualizar las vidas solo si tenemos una barra de vidas asignada.
         if (player.livesBar)
         {
-            // If we run out of lives, it's game over
+            // Si nos quedamos sin vidas, es el fin del juego.
             if (player.lives <= 0) StartCoroutine(GameOver(1));
         }
     }
 
     /// <summary>
-    /// Sets the questions list from an external question list. This is used when getting the questions from a category selector.
+    /// Establece la lista de preguntas desde una lista de preguntas externa. Esto se usa cuando se obtienen las preguntas de un selector de categoría.
     /// </summary>
-    /// <param name="setValue">The list of questions we got</param>
+    /// <param name="setValue">La lista de preguntas que obtuvimos.</param>
     public void SetQuestions(Pregunta[] setValue)
     {
         questions = setValue;
     }
 
-
     /// <summary>
-    /// Skips the current question and displays the next one
+    /// Salta la pregunta actual y muestra la siguiente.
     /// </summary>
     public void SkipQuestion()
     {
-        // Stop listening for a click on the button to move to the next question
+        // Dejar de escuchar un clic en el botón para pasar a la siguiente pregunta.
         if (questionObject.GetComponent<Button>()) questionObject.GetComponent<Button>().onClick.RemoveAllListeners();
 
-        // Reset the question and answers in order to display the next question
+        // Restablecer la pregunta y las respuestas para mostrar la próxima pregunta.
         StartCoroutine(ResetQuestion(0.5f));
     }
 
     /// <summary>
-    /// Gives the player an extra life once per match. This can be used with UnityAds to reward the player when watching an ad
+    /// Da al jugador una vida extra una vez por partido. Esto se puede usar con UnityAds para recompensar al jugador al ver un anuncio.
     /// </summary>
     public void ExtraLife()
     {
-        // Add to lives
+        // Añadir a las vidas.
         player.lives++;
 
-        // Update the lives we have left
+        // Actualizar las vidas que nos quedan.
         Updatelives();
 
-        // The game is not over anymore
+        // El juego ya no ha terminado.
         isGameOver = false;
 
-        // Reset the score texts and hide the gameover object
+        // Restablecer los textos de puntuación y ocultar el objeto de juego terminado.
         if (gameOverCanvas)
         {
             gameOverCanvas.Find("ScoreTexts/TextScore").GetComponent<Text>().text = gameOverCanvas
@@ -1445,7 +1447,7 @@ public class TriviaGameManager : MonoBehaviour
             gameOverCanvas.gameObject.SetActive(false);
         }
 
-        // Ask the next question
+        // Hacer la próxima pregunta.
         StartCoroutine(AskQuestion(false));
     }
 }
