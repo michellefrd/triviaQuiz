@@ -96,9 +96,10 @@ public class LeaderboardManager : MonoBehaviour
                         {
                             found = true;
                             // Mostrar el texto personalizado para el usuario actual.
-                            MyNameTxt.text = "Mi puntuación"; 
+                            MyNameTxt.text = "Mi puntuación";
                             MyPointsTxt.text = record.score + " pts";
                             MyRank.text = rank.ToString();
+                            MyRank.gameObject.SetActive(true);
                             // Actualizar imágenes de ranking según la posición.
                             UpdateMyRankingImages(rank); 
                         }
@@ -177,6 +178,7 @@ public class LeaderboardManager : MonoBehaviour
         {
             // Mostrar el rango numérico si está fuera del top 3.
             MyRank.text = myRank.ToString(); 
+            MyRank.gameObject.SetActive(true);
         }
     }
 
@@ -209,6 +211,7 @@ public class LeaderboardManager : MonoBehaviour
         }
         else
         {
+            leaderboardItem.rank.gameObject.SetActive(true);
             leaderboardItem.rank.text = rank.ToString(); // Mostrar el rango numérico para otros puestos.
         }
     }

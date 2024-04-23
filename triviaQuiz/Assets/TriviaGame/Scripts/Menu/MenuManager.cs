@@ -83,6 +83,7 @@ public class MenuManager : MonoBehaviour
         var leaderboard = triviaDB.GetTable_Leaderboard(); 
         // Obtiene el email del jugador guardado en las preferencias.
         string playerEmail = PlayerPrefs.GetString("Email");
+        Debug.Log(playerEmail);
         
         // Consulta la tabla del leaderboard para verificar si existe un registro con el email del jugador.
         _ = leaderboard
