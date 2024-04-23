@@ -10,9 +10,11 @@ public class MenuManager : MonoBehaviour
     // Instancia de la base de datos de Trivia.
     private UniDB.Trivia triviaDB; 
 
+    [Header("Transform")]
     // Objeto padre para sostener los botones de categorías instanciados.
     public Transform categoryButtonParent;
 
+    [Header("Prefab")]
     // Prefab para los botones de categorías.
     public GameObject categoryButtonPrefab;
 

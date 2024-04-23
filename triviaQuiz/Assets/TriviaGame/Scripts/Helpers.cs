@@ -22,6 +22,5 @@ public static class Helpers
             return Convert.ToBase64String(hash); // Convertir el hash a string para almacenamiento
         }
     }
-
    
 }
