@@ -1,6 +1,3 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Mail;
 using TigerForge.UniDB;
@@ -194,7 +191,7 @@ public class RecoverPasswordManager : MonoBehaviour
 
     public void UpdateUserPassword(string email, string newPassword)
     {
-        var hashedPassword = HashPassword(newPassword);  // Hashear la nueva contraseña
+        var hashedPassword = Helpers.HashPassword(newPassword);  // Hashear la nueva contraseña
         var users = triviaDB.GetTable_Users();
         _ = users
             .Update()
@@ -225,13 +222,4 @@ public class RecoverPasswordManager : MonoBehaviour
         SceneManager.LoadScene("LoginScene");
     }
     
-    private string HashPassword(string password)
-    {
-        using (var sha256 = System.Security.Cryptography.SHA256.Create())
-        {
-            var bytes = System.Text.Encoding.UTF8.GetBytes(password);
-            var hash = sha256.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
-        }
-    }
 }
