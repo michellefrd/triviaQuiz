@@ -7,7 +7,7 @@ public class LoadScenesApp : MonoBehaviour
 {
    public void OnExitClicked()
    {
-      Application.Quit();
+      SceneManager.LoadScene("LoginScene");
    }
 
    public void OnLeaderboardClicked()
